@@ -62,7 +62,7 @@ A chessboard written in RUST
   * [ ] cannot capture own pieces
 * [ ] Implement `Pin` rule (a piece cannot move if doing so exposes its own `King` to check)
 * [ ] Create starting `Position` with all 32 pieces on their initial squares
-* [ ] Create `Game` struct holding the starting position and history of `Position`s for replay
+* [x] Create `Game` struct holding the starting position and history of `Position`s for replay
   * [ ] track whose turn it is to play (White or Black)
   * [ ] support chess notation (FEN / Algebraic notation / PGN)
 * [ ] Build chess engine / GUI (`macroquad`)

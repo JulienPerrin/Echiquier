@@ -1,41 +1,25 @@
 ---
 name: echiquier-dev
 description: >-
-  Development workflow, Rust architecture, and coding conventions for the Echiquier chessboard project.
-  Use this skill whenever implementing new pieces, chess rules, board/position features, or refactoring code in the echiquier repository.
+  Project-specific architecture and chess domain conventions for the Echiquier chessboard repository.
+  Use this skill alongside env-rust whenever implementing new pieces, chess rules, board/position features, or game history in echiquier.
 ---
 
-# Echiquier Development Skill
+# Echiquier Architecture Skill
 
-Follow these guidelines whenever making changes to the `echiquier` project.
+Use this skill alongside the global `env-rust` skill when working on the `echiquier` repository.
 
-## 1. Respect `README.md` and Maintain the `## TODO` List
-* Always read [README.md](../../../README.md) before starting a feature to align with the project's design ideas and roadmap.
-* After completing any feature or rule, update the `## TODO` section in `README.md` (mark completed items `[x]` and add new sub-items if discovered).
-* Always use `*` (stars) for markdown bullet lists in `README.md`.
-
-## 2. Minimize Redundancy with Traits & Composition
-* **Base Struct (`Piece`)**: Keep shared piece fields (`case`, `kind`, `is_white`, `last_move`) in `Piece` (`src/pieces/piece.rs`). Do not put `match self.kind` blocks in `Piece`.
-* **Shared Trait (`Movable`)**: Put shared movement, filtering, and validation logic (`allowed_moves`, `is_move_allowed`, `move_piece`) as default methods on the `Movable` trait (`pub trait Movable: DerefMut<Target = Piece> + Display` in `src/pieces/movable.rs`).
+## 1. Piece Hierarchy (`Piece`, `Movable`, and Child Pieces)
+* **Base Struct (`Piece`)**: Keep shared piece fields (`case`, `kind`, `is_white`, `last_move`) in `Piece` (`src/pieces/piece.rs`). Do not put `match self.kind` blocks or `impl Display for Piece` in `src/pieces/piece.rs`.
+* **Shared Trait (`Movable`)**: Keep shared movement, board-boundary filtering, and validation logic (`allowed_moves`, `is_move_allowed`, `move_piece`) as default methods on `Movable` (`pub trait Movable: DerefMut<Target = Piece> + Display` in `src/pieces/movable.rs`).
 * **Child Pieces (`Pawn`, `King`, etc.)**:
   * Place each piece in its own module (`src/pieces/<piece>.rs`).
-  * Wrap `pub piece: Piece` and implement `Deref<Target = Piece>` and `DerefMut` to inherit `Piece` fields without duplicating them.
-  * Implement `Display` directly on the child struct (enforced by `Movable: Display`).
-  * Implement `Movable` on the child struct by providing only piece-specific `candidate_moves` (relying on `Movable`'s default `allowed_moves` and `move_piece`).
+  * Wrap `pub piece: Piece` and implement `Deref<Target = Piece>` and `DerefMut`.
+  * Implement `Display` directly on the child struct.
+  * Implement `Movable` on the child struct by providing only `candidate_moves`.
 
-## 3. Performance & Game History
-* `Position<'a>` borrows `&'a Echiquier` and stores `[Option<Piece>; 64]` so positions remain lightweight and `Copy`.
-* Borrow `&Position` for read-only move queries (`candidate_moves`, `allowed_moves`, `is_move_allowed`).
-* Return a new `Position<'a>` snapshot from `move_piece` instead of mutating in place, preserving previous positions for game history and engine search.
-
-## 4. Formatting & Code Style
-* Preserve existing formatting and intentional blank lines/line jumps in edited files.
-* Write idiomatic Rust (`Option<T>`, supertrait bounds to enforce compile-time contracts).
-
-## 5. Verification (`rtk cargo test` & Warnings)
-* Always write unit tests (`#[cfg(test)] mod tests`) for every new piece or rule.
-* Use `rtk` to run shell commands (e.g., `rtk cargo test`, `rtk cargo run`, `rtk git status`) to keep command output compact.
-* Ensure all tests pass with zero compiler warnings.
-
-## 6. Git Policy (Read-Only)
-* **Never** run `git commit`, `git push`, `git add`, `git restore`, `git reset`, `git checkout`, or any command that modifies git state or history. The user handles all git operations manually.
+## 2. Board, `Position`, and `Game` History
+* `Position<'a>` (`src/echiquier/position.rs`) borrows `&'a Echiquier` and stores `[Option<Piece>; 64]` so positions remain lightweight and `Copy`.
+* `Position` display prints ranks `H` down to `A` from top to bottom (White at the bottom) and files `1..8` along the bottom, with `x` for empty squares.
+* `move_piece` borrows `&Position<'a>` and returns a new `Position<'a>` snapshot so previous positions remain intact.
+* `Game<'a>` (`src/echiquier/game.rs`) stores `initial_position: Position<'a>` and `positions: Vec<Position<'a>>` to record the evolution of the game for replay and engine search.

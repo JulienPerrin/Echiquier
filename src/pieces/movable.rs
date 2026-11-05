@@ -36,3 +36,24 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
         next_position
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::echiquier::echiquier::Echiquier;
+    use crate::pieces::pawn::Pawn;
+
+    #[test]
+    #[should_panic(expected = "forbidden move!")]
+    fn move_piece_panics_on_forbidden_move() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e2 = position.echiquier.get_case(1, 4);
+        let mut pawn = Pawn::new(e2, true);
+        position.set_piece(*pawn);
+
+        let forbidden_move = PieceMove { right: 1, up: 0 };
+        let f2 = position.echiquier.get_relative_case(&e2, forbidden_move);
+        pawn.move_piece(&position, forbidden_move, f2);
+    }
+}

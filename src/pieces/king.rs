@@ -14,6 +14,7 @@ pub struct King {
 }
 
 impl King {
+    #[allow(dead_code)]
     pub fn new(case: Case, is_white: bool) -> Self {
         King {
             piece: Piece::new(case, PieceKind::KING, is_white),
@@ -77,5 +78,6 @@ mod tests {
         let next_position = king.move_piece(&position, one_up, e5);
         assert_eq!(e5, king.case);
         assert_eq!(Some(*king), next_position.pieces[(e5.rank * 8 + e5.file) as usize]);
+        assert_eq!("K", king.to_string());
     }
 }
