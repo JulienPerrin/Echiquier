@@ -1,3 +1,4 @@
 pub mod case;
-pub mod deplacement;
+pub mod piece_move;
 pub mod echiquier;
+pub mod position;

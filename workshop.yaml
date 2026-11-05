@@ -1,0 +1,16 @@
+name: dev
+base: ubuntu@26.04
+sdks:
+  - name: pi
+    plugs:
+      llm-endpoint:
+        interface: tunnel
+        endpoint: localhost:8340
+  - name: system
+    slots:
+      llm-endpoint:
+        interface: tunnel
+        endpoint: localhost:8340
+
+actions:
+  pi: pi "$@"

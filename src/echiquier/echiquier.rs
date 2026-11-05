@@ -1,7 +1,11 @@
 use super::case::Case;
-use super::deplacement::Deplacement;
-use std::fmt;
+use super::piece_move::PieceMove;
+use std::clone::Clone;
+use std::cmp::PartialEq;
+use std::fmt::{self, Debug, Display};
+use std::marker::Copy;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Echiquier {
     pub cases: [Case; 64],
 }
@@ -10,99 +14,99 @@ impl Echiquier {
     pub fn new() -> Echiquier {
         return Echiquier {
             cases: [
-                Case { range: 0, file: 0 },
-                Case { range: 0, file: 1 },
-                Case { range: 0, file: 2 },
-                Case { range: 0, file: 3 },
-                Case { range: 0, file: 4 },
-                Case { range: 0, file: 5 },
-                Case { range: 0, file: 6 },
-                Case { range: 0, file: 7 },
-                Case { range: 1, file: 0 },
-                Case { range: 1, file: 1 },
-                Case { range: 1, file: 2 },
-                Case { range: 1, file: 3 },
-                Case { range: 1, file: 4 },
-                Case { range: 1, file: 5 },
-                Case { range: 1, file: 6 },
-                Case { range: 1, file: 7 },
-                Case { range: 2, file: 0 },
-                Case { range: 2, file: 1 },
-                Case { range: 2, file: 2 },
-                Case { range: 2, file: 3 },
-                Case { range: 2, file: 4 },
-                Case { range: 2, file: 5 },
-                Case { range: 2, file: 6 },
-                Case { range: 2, file: 7 },
-                Case { range: 3, file: 0 },
-                Case { range: 3, file: 1 },
-                Case { range: 3, file: 2 },
-                Case { range: 3, file: 3 },
-                Case { range: 3, file: 4 },
-                Case { range: 3, file: 5 },
-                Case { range: 3, file: 6 },
-                Case { range: 3, file: 7 },
-                Case { range: 4, file: 0 },
-                Case { range: 4, file: 1 },
-                Case { range: 4, file: 2 },
-                Case { range: 4, file: 3 },
-                Case { range: 4, file: 4 },
-                Case { range: 4, file: 5 },
-                Case { range: 4, file: 6 },
-                Case { range: 4, file: 7 },
-                Case { range: 5, file: 0 },
-                Case { range: 5, file: 1 },
-                Case { range: 5, file: 2 },
-                Case { range: 5, file: 3 },
-                Case { range: 5, file: 4 },
-                Case { range: 5, file: 5 },
-                Case { range: 5, file: 6 },
-                Case { range: 5, file: 7 },
-                Case { range: 6, file: 0 },
-                Case { range: 6, file: 1 },
-                Case { range: 6, file: 2 },
-                Case { range: 6, file: 3 },
-                Case { range: 6, file: 4 },
-                Case { range: 6, file: 5 },
-                Case { range: 6, file: 6 },
-                Case { range: 6, file: 7 },
-                Case { range: 7, file: 0 },
-                Case { range: 7, file: 1 },
-                Case { range: 7, file: 2 },
-                Case { range: 7, file: 3 },
-                Case { range: 7, file: 4 },
-                Case { range: 7, file: 5 },
-                Case { range: 7, file: 6 },
-                Case { range: 7, file: 7 },
+                Case { rank: 0, file: 0 },
+                Case { rank: 0, file: 1 },
+                Case { rank: 0, file: 2 },
+                Case { rank: 0, file: 3 },
+                Case { rank: 0, file: 4 },
+                Case { rank: 0, file: 5 },
+                Case { rank: 0, file: 6 },
+                Case { rank: 0, file: 7 },
+                Case { rank: 1, file: 0 },
+                Case { rank: 1, file: 1 },
+                Case { rank: 1, file: 2 },
+                Case { rank: 1, file: 3 },
+                Case { rank: 1, file: 4 },
+                Case { rank: 1, file: 5 },
+                Case { rank: 1, file: 6 },
+                Case { rank: 1, file: 7 },
+                Case { rank: 2, file: 0 },
+                Case { rank: 2, file: 1 },
+                Case { rank: 2, file: 2 },
+                Case { rank: 2, file: 3 },
+                Case { rank: 2, file: 4 },
+                Case { rank: 2, file: 5 },
+                Case { rank: 2, file: 6 },
+                Case { rank: 2, file: 7 },
+                Case { rank: 3, file: 0 },
+                Case { rank: 3, file: 1 },
+                Case { rank: 3, file: 2 },
+                Case { rank: 3, file: 3 },
+                Case { rank: 3, file: 4 },
+                Case { rank: 3, file: 5 },
+                Case { rank: 3, file: 6 },
+                Case { rank: 3, file: 7 },
+                Case { rank: 4, file: 0 },
+                Case { rank: 4, file: 1 },
+                Case { rank: 4, file: 2 },
+                Case { rank: 4, file: 3 },
+                Case { rank: 4, file: 4 },
+                Case { rank: 4, file: 5 },
+                Case { rank: 4, file: 6 },
+                Case { rank: 4, file: 7 },
+                Case { rank: 5, file: 0 },
+                Case { rank: 5, file: 1 },
+                Case { rank: 5, file: 2 },
+                Case { rank: 5, file: 3 },
+                Case { rank: 5, file: 4 },
+                Case { rank: 5, file: 5 },
+                Case { rank: 5, file: 6 },
+                Case { rank: 5, file: 7 },
+                Case { rank: 6, file: 0 },
+                Case { rank: 6, file: 1 },
+                Case { rank: 6, file: 2 },
+                Case { rank: 6, file: 3 },
+                Case { rank: 6, file: 4 },
+                Case { rank: 6, file: 5 },
+                Case { rank: 6, file: 6 },
+                Case { rank: 6, file: 7 },
+                Case { rank: 7, file: 0 },
+                Case { rank: 7, file: 1 },
+                Case { rank: 7, file: 2 },
+                Case { rank: 7, file: 3 },
+                Case { rank: 7, file: 4 },
+                Case { rank: 7, file: 5 },
+                Case { rank: 7, file: 6 },
+                Case { rank: 7, file: 7 },
             ],
         };
     }
 
-    pub fn exists_case(&self, range: i8, file: i8) -> bool {
-        return range >= 0 && file >= 0 && range < 8 && file < 8;
+    pub fn exists_case(&self, rank: i8, file: i8) -> bool {
+        return rank >= 0 && file >= 0 && rank < 8 && file < 8;
     }
 
-    pub fn exists_relative_case(&self, case: &Case, deplacement: Deplacement) -> bool {
+    pub fn exists_relative_case(&self, case: &Case, piece_move: PieceMove) -> bool {
         return self.exists_case(
-            (case.range as i8) + deplacement.up,
-            (case.file as i8) + deplacement.right,
+            (case.rank as i8) + piece_move.up,
+            (case.file as i8) + piece_move.right,
         );
     }
 
-    pub fn get_case(&self, range: u8, file: u8) -> Case {
-        let index: u8 = range * 8 + file;
+    pub fn get_case(&self, rank: u8, file: u8) -> Case {
+        let index: u8 = rank * 8 + file;
         return self.cases[index as usize];
     }
 
-    pub fn get_relative_case(&self, case: &Case, deplacement: Deplacement) -> Case {
+    pub fn get_relative_case(&self, case: &Case, piece_move: PieceMove) -> Case {
         return self.get_case(
-            ((case.range as i8) + deplacement.up) as u8,
-            ((case.file as i8) + deplacement.right) as u8,
+            ((case.rank as i8) + piece_move.up) as u8,
+            ((case.file as i8) + piece_move.right) as u8,
         );
     }
 }
 
-impl fmt::Display for Echiquier {
+impl Display for Echiquier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -191,16 +195,16 @@ mod tests {
     fn fabrique_echiquier() {
         let echiquier: Echiquier = Echiquier::new();
         let a1: Case = echiquier.get_case(0, 0);
-        assert_eq!(0, a1.range);
+        assert_eq!(0, a1.rank);
         assert_eq!(0, a1.file);
         let a8: Case = echiquier.get_case(0, 7);
-        assert_eq!(0, a8.range);
+        assert_eq!(0, a8.rank);
         assert_eq!(7, a8.file);
         let h1: Case = echiquier.get_case(7, 0);
-        assert_eq!(7, h1.range);
+        assert_eq!(7, h1.rank);
         assert_eq!(0, h1.file);
         let h8: Case = echiquier.get_case(7, 7);
-        assert_eq!(7, h8.range);
+        assert_eq!(7, h8.rank);
         assert_eq!(7, h8.file);
     }
 
@@ -218,16 +222,16 @@ mod tests {
     }
 
     #[test]
-    fn get_b3_from_a1() {
+    fn get_from_a1_to_b3_() {
         let echiquier: Echiquier = Echiquier::new();
         assert!(echiquier.exists_case(0, 0));
         let a1: Case = echiquier.get_case(0, 0);
-        let no_deplacement: Deplacement = Deplacement { right: 0, up: 0 };
+        let no_deplacement: PieceMove = PieceMove { right: 0, up: 0 };
         assert!(echiquier.exists_relative_case(&a1, no_deplacement));
-        let one_right_two_up: Deplacement = Deplacement { right: 1, up: 2 };
+        let one_right_two_up: PieceMove = PieceMove { right: 1, up: 2 };
         assert!(echiquier.exists_relative_case(&a1, one_right_two_up));
         let b3: Case = echiquier.get_relative_case(&a1, one_right_two_up);
-        assert_eq!(2, b3.range);
+        assert_eq!(2, b3.rank);
         assert_eq!(1, b3.file);
     }
 
@@ -236,10 +240,10 @@ mod tests {
         let echiquier: Echiquier = Echiquier::new();
         assert!(echiquier.exists_case(0, 0));
         let a1: Case = echiquier.get_case(0, 0);
-        assert!(!echiquier.exists_relative_case(&a1, Deplacement { right: -1, up: 0 }));
-        assert!(!echiquier.exists_relative_case(&a1, Deplacement { right: 0, up: -1 }));
-        assert!(!echiquier.exists_relative_case(&a1, Deplacement { right: 8, up: 0 }));
-        assert!(!echiquier.exists_relative_case(&a1, Deplacement { right: 0, up: 8 }));
+        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: -1, up: 0 }));
+        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 0, up: -1 }));
+        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 8, up: 0 }));
+        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 0, up: 8 }));
     }
 
     #[test]
