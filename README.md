@@ -27,6 +27,7 @@ A chessboard written in RUST
 
 * [x] Create 64-square chessboard (`Echiquier` and `Case`)
 * [x] Create `Position` with `[Option<Piece>; 64]` and console `Display`
+  * [x] Query pieces by color and optional kind (`get_pieces`)
 * [x] Implement `Pawn` 1-square forward movement (up for white, down for black)
 * [x] Track `last_move: Option<PieceMove>` on `Piece`
 * [x] Improve `Position` display with Unicode chess symbols (white/black pieces)
@@ -55,7 +56,7 @@ A chessboard written in RUST
     * [x] move one square any direction
     * [ ] cannot move onto an attacked square
     * [ ] castling (kingside and queenside, when king and rook have `last_move.is_none()`, path is clear, and not passing through check)
-    * [ ] `is_in_check`
+    * [x] `is_in_check`
     * [ ] `is_in_checkmate`
     * [ ] `is_in_stalemate` (`pat`)
 * [x] Implement board collision & capture rules

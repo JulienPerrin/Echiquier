@@ -4,8 +4,14 @@ use std::ops::DerefMut;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
+use crate::pieces::bishop::Bishop;
+use crate::pieces::king::King;
+use crate::pieces::knight::Knight;
+use crate::pieces::pawn::Pawn;
 use crate::pieces::piece::Piece;
 use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::queen::Queen;
+use crate::pieces::rook::Rook;
 
 pub trait Movable: DerefMut<Target = Piece> + Display {
     fn candidate_moves(&self, position: &Position) -> Vec<PieceMove>;
@@ -122,13 +128,21 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
     }
 }
 
+pub fn piece_candidate_captures(piece: Piece, position: &Position) -> Vec<(PieceMove, Piece)> {
+    match piece.kind {
+        PieceKind::PAWN => Pawn { piece }.candidate_captures(position),
+        PieceKind::KNIGHT => Knight { piece }.candidate_captures(position),
+        PieceKind::BISHOP => Bishop { piece }.candidate_captures(position),
+        PieceKind::ROOK => Rook { piece }.candidate_captures(position),
+        PieceKind::QUEEN => Queen { piece }.candidate_captures(position),
+        PieceKind::KING => King { piece }.candidate_captures(position),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
-    use crate::pieces::king::King;
-    use crate::pieces::pawn::Pawn;
-    use crate::pieces::rook::Rook;
 
     #[test]
     #[should_panic(expected = "forbidden move!")]
@@ -225,5 +239,60 @@ mod tests {
         // Going up (0, 1) hits occupied a2 (line 27 break)
         let moves = king.sliding_candidate_moves(&position, &[(-1, 0), (0, 1)]);
         assert_eq!(vec![PieceMove { right: 0, up: 1 }], moves);
+    }
+
+    #[test]
+    fn piece_candidate_captures_dispatches_for_all_kinds() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let d4 = position.echiquier.get_case(3, 3);
+        let e5 = position.echiquier.get_case(4, 4);
+
+        let black_pawn = *Pawn::new(e5, false);
+        position.set_piece(black_pawn);
+
+        // Pawn at d4 attacks e5 diagonally
+        let white_pawn = *Pawn::new(d4, true);
+        assert_eq!(
+            vec![(PieceMove { right: 1, up: 1 }, black_pawn)],
+            piece_candidate_captures(white_pawn, &position)
+        );
+
+        // Bishop at d4 attacks e5 diagonally
+        let white_bishop = *Bishop::new(d4, true);
+        assert_eq!(
+            vec![(PieceMove { right: 1, up: 1 }, black_pawn)],
+            piece_candidate_captures(white_bishop, &position)
+        );
+
+        // Queen at d4 attacks e5 diagonally
+        let white_queen = *Queen::new(d4, true);
+        assert_eq!(
+            vec![(PieceMove { right: 1, up: 1 }, black_pawn)],
+            piece_candidate_captures(white_queen, &position)
+        );
+
+        // Rook at d5 attacks e5 horizontally
+        let d5 = position.echiquier.get_case(4, 3);
+        let white_rook = *Rook::new(d5, true);
+        assert_eq!(
+            vec![(PieceMove { right: 1, up: 0 }, black_pawn)],
+            piece_candidate_captures(white_rook, &position)
+        );
+
+        // Knight at c4 attacks e5 via L-shape (2 right, 1 up)
+        let c4 = position.echiquier.get_case(3, 2);
+        let white_knight = *Knight::new(c4, true);
+        assert_eq!(
+            vec![(PieceMove { right: 2, up: 1 }, black_pawn)],
+            piece_candidate_captures(white_knight, &position)
+        );
+
+        // King at d5 attacks e5
+        let white_king = *King::new(d5, true);
+        assert_eq!(
+            vec![(PieceMove { right: 1, up: 0 }, black_pawn)],
+            piece_candidate_captures(white_king, &position)
+        );
     }
 }

@@ -55,6 +55,15 @@ impl<'a> Position<'a> {
     pub fn is_case_occupied(&self, case: &Case) -> bool {
         self.get_piece(case).is_some()
     }
+
+    #[allow(dead_code)]
+    pub fn get_pieces(&self, is_white: bool, kind: Option<PieceKind>) -> Vec<Piece> {
+        self.pieces
+            .into_iter()
+            .flatten()
+            .filter(|piece| piece.is_white == is_white && kind.map_or(true, |k| piece.kind == k))
+            .collect()
+    }
 }
 
 const EMPTY_SQUARE_SYMBOL: char = '·';
@@ -149,5 +158,52 @@ mod tests {
   A B C D E F G H",
             position.to_string()
         );
+    }
+
+    #[test]
+    fn get_pieces_by_color_and_optional_kind() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let b1 = position.echiquier.get_case(0, 1);
+        let c1 = position.echiquier.get_case(0, 2);
+        let e8 = position.echiquier.get_case(7, 4);
+
+        let white_rook = *Rook::new(a1, true);
+        let white_knight = *Knight::new(b1, true);
+        let white_bishop = *Bishop::new(c1, true);
+        let black_king = *King::new(e8, false);
+
+        position.set_piece(white_rook);
+        position.set_piece(white_knight);
+        position.set_piece(white_bishop);
+        position.set_piece(black_king);
+
+        // All white pieces (kind is None)
+        let white_pieces = position.get_pieces(true, None);
+        assert_eq!(3, white_pieces.len());
+        assert!(white_pieces.contains(&white_rook));
+        assert!(white_pieces.contains(&white_knight));
+        assert!(white_pieces.contains(&white_bishop));
+
+        // Specific white piece by kind
+        let white_rooks = position.get_pieces(true, Some(PieceKind::ROOK));
+        assert_eq!(vec![white_rook], white_rooks);
+
+        // Specific black piece by kind
+        let black_kings = position.get_pieces(false, Some(PieceKind::KING));
+        assert_eq!(vec![black_king], black_kings);
+
+        // All black pieces (kind is None)
+        let black_pieces = position.get_pieces(false, None);
+        assert_eq!(vec![black_king], black_pieces);
+
+        // No match for piece type of given color
+        let black_pawns = position.get_pieces(false, Some(PieceKind::PAWN));
+        assert!(black_pawns.is_empty());
+
+        // No match on empty board
+        let empty_position = Position::new(&echiquier);
+        assert!(empty_position.get_pieces(true, None).is_empty());
     }
 }
