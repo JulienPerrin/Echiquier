@@ -43,11 +43,34 @@ impl Pawn {
         }
     }
 
+    pub const fn way(&self) -> i8 {
+        if self.piece.is_white { 1 } else { -1 }
+    }
+
     pub fn is_promotion_rank(&self, case: &Case) -> bool {
-        if self.is_white {
-            case.rank == 7
+        case.rank == if self.is_white { 7 } else { 0 }
+    }
+
+    pub fn en_passant_capture(&self, position: &Position, right_value: i8) -> Option<Piece> {
+        let adjacent_piece = position.get_relative_piece(
+            &self.case,
+            PieceMove {
+                right: right_value,
+                up: 0,
+            },
+        )?;
+        if matches!(adjacent_piece, Piece::Pawn(_))
+            && adjacent_piece.is_white != self.is_white
+            && position.last_moved_piece == Some(adjacent_piece)
+            && adjacent_piece.last_move
+                == Some(PieceMove {
+                    right: 0,
+                    up: -self.way() * 2,
+                })
+        {
+            Some(adjacent_piece)
         } else {
-            case.rank == 0
+            None
         }
     }
 
@@ -85,7 +108,7 @@ impl Display for Pawn {
 
 impl Movable for Pawn {
     fn candidate_moves(&self, position: &Position) -> Vec<PieceMove> {
-        let direction = if self.is_white { 1 } else { -1 };
+        let direction = self.way();
         let one_step = PieceMove {
             right: 0,
             up: direction,
@@ -117,7 +140,7 @@ impl Movable for Pawn {
     }
 
     fn candidate_captures(&self, position: &Position) -> Vec<(PieceMove, Piece)> {
-        let direction = if self.is_white { 1 } else { -1 };
+        let direction = self.way();
         let mut captures = Vec::new();
 
         for right_value in [-1, 1] {
@@ -125,26 +148,12 @@ impl Movable for Pawn {
                 right: right_value,
                 up: direction,
             };
-            if let Some(target_piece) = position.get_relative_piece(&self.case, diagonal_move)
-                && target_piece.is_white != self.is_white
-            {
-                captures.push((diagonal_move, target_piece));
-            } else if let Some(adjacent_piece) = position.get_relative_piece(
-                &self.case,
-                PieceMove {
-                    right: right_value,
-                    up: 0,
-                },
-            ) && matches!(adjacent_piece, Piece::Pawn(_))
-                && adjacent_piece.is_white != self.is_white
-                && position.last_moved_piece == Some(adjacent_piece)
-                && adjacent_piece.last_move
-                    == Some(PieceMove {
-                        right: 0,
-                        up: -direction * 2,
-                    })
-            {
-                captures.push((diagonal_move, adjacent_piece));
+            if let Some(target_piece) = position.get_relative_piece(&self.case, diagonal_move) {
+                if target_piece.is_white != self.is_white {
+                    captures.push((diagonal_move, target_piece));
+                }
+            } else if let Some(en_passant) = self.en_passant_capture(position, right_value) {
+                captures.push((diagonal_move, en_passant));
             }
         }
 
@@ -269,8 +278,13 @@ mod tests {
         );
         assert!(white_pawn.is_capture_allowed(&position, capture_move, black_pawn_d5.into()));
 
-        let next_position =
-            white_pawn.move_piece(&position, capture_move, d5, Some(black_pawn_d5.into()), None);
+        let next_position = white_pawn.move_piece(
+            &position,
+            capture_move,
+            d5,
+            Some(black_pawn_d5.into()),
+            None,
+        );
         assert_eq!(d5, white_pawn.case);
         assert_eq!(Some(Piece::from(white_pawn)), next_position.get_piece(&d5));
         assert_eq!(None, next_position.get_piece(&e4));
@@ -360,8 +374,13 @@ mod tests {
         assert!(white_pawn.allowed_captures(&after_other_move).is_empty());
 
         // Execute en-passant capture on `after_d5`: white pawn moves to d6 and black pawn on d5 is removed
-        let after_en_passant =
-            white_pawn.move_piece(&after_d5, en_passant_move, d6, Some(black_pawn.into()), None);
+        let after_en_passant = white_pawn.move_piece(
+            &after_d5,
+            en_passant_move,
+            d6,
+            Some(black_pawn.into()),
+            None,
+        );
         assert_eq!(d6, white_pawn.case);
         assert_eq!(
             Some(Piece::from(white_pawn)),
@@ -398,8 +417,13 @@ mod tests {
             black_pawn.allowed_captures(&after_e4)
         );
 
-        let after_en_passant =
-            black_pawn.move_piece(&after_e4, en_passant_move, e3, Some(white_pawn.into()), None);
+        let after_en_passant = black_pawn.move_piece(
+            &after_e4,
+            en_passant_move,
+            e3,
+            Some(white_pawn.into()),
+            None,
+        );
         assert_eq!(e3, black_pawn.case);
         assert_eq!(
             Some(Piece::from(black_pawn)),
@@ -407,6 +431,57 @@ mod tests {
         );
         assert_eq!(None, after_en_passant.get_piece(&d4));
         assert_eq!(None, after_en_passant.get_piece(&e4));
+    }
+
+    #[test]
+    fn pawn_moving_one_square_adjacent_does_not_allow_en_passant() {
+        let echiquier = Echiquier::new();
+
+        // 1. White pawn on e5, Black pawn on d6 moves 1 square to d5
+        let mut position = Position::new(&echiquier);
+        let e5 = echiquier.get_case(4, 4);
+        let d6 = echiquier.get_case(5, 3);
+        let d5 = echiquier.get_case(4, 3);
+
+        let mut white_pawn = Pawn::new(e5, true);
+        white_pawn.last_move = Some(PieceMove { right: 0, up: 1 });
+        let mut black_pawn = Pawn::new(d6, false);
+        black_pawn.last_move = Some(PieceMove { right: 0, up: -1 });
+
+        position.set_piece(white_pawn);
+        position.set_piece(black_pawn);
+        position.last_moved_piece = Some(Piece::from(white_pawn));
+
+        let after_d5 =
+            black_pawn.move_piece(&position, PieceMove { right: 0, up: -1 }, d5, None, None);
+
+        assert!(white_pawn.allowed_captures(&after_d5).is_empty());
+        assert!(!white_pawn
+            .allowed_moves(&after_d5)
+            .contains(&PieceMove { right: -1, up: 1 }));
+
+        // 2. Black pawn on d4, White pawn on e3 moves 1 square to e4
+        let d4 = echiquier.get_case(3, 3);
+        let e3 = echiquier.get_case(2, 4);
+        let e4 = echiquier.get_case(3, 4);
+
+        let mut pos2 = Position::new(&echiquier);
+        let mut black_pawn2 = Pawn::new(d4, false);
+        black_pawn2.last_move = Some(PieceMove { right: 0, up: -1 });
+        let mut white_pawn2 = Pawn::new(e3, true);
+        white_pawn2.last_move = Some(PieceMove { right: 0, up: 1 });
+
+        pos2.set_piece(black_pawn2);
+        pos2.set_piece(white_pawn2);
+        pos2.last_moved_piece = Some(Piece::from(black_pawn2));
+
+        let after_e4 =
+            white_pawn2.move_piece(&pos2, PieceMove { right: 0, up: 1 }, e4, None, None);
+
+        assert!(black_pawn2.allowed_captures(&after_e4).is_empty());
+        assert!(!black_pawn2
+            .allowed_moves(&after_e4)
+            .contains(&PieceMove { right: 1, up: -1 }));
     }
 
     #[test]
@@ -425,22 +500,28 @@ mod tests {
         let one_up = PieceMove { right: 0, up: 1 };
 
         for (variant, expected_discriminant) in [
-            (PromotionPiece::Queen, std::mem::discriminant(&Piece::Queen(Queen::new(e8, true)))),
-            (PromotionPiece::Rook, std::mem::discriminant(&Piece::Rook(Rook::new(e8, true)))),
-            (PromotionPiece::Bishop, std::mem::discriminant(&Piece::Bishop(Bishop::new(e8, true)))),
-            (PromotionPiece::Knight, std::mem::discriminant(&Piece::Knight(Knight::new(e8, true)))),
+            (
+                PromotionPiece::Queen,
+                std::mem::discriminant(&Piece::Queen(Queen::new(e8, true))),
+            ),
+            (
+                PromotionPiece::Rook,
+                std::mem::discriminant(&Piece::Rook(Rook::new(e8, true))),
+            ),
+            (
+                PromotionPiece::Bishop,
+                std::mem::discriminant(&Piece::Bishop(Bishop::new(e8, true))),
+            ),
+            (
+                PromotionPiece::Knight,
+                std::mem::discriminant(&Piece::Knight(Knight::new(e8, true))),
+            ),
         ] {
             let mut position = Position::new(&echiquier);
             let mut white_pawn = Pawn::new(e7, true);
             position.set_piece(white_pawn);
 
-            let next_position = white_pawn.move_piece(
-                &position,
-                one_up,
-                e8,
-                None,
-                Some(variant),
-            );
+            let next_position = white_pawn.move_piece(&position, one_up, e8, None, Some(variant));
 
             let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
             assert_eq!(std::mem::discriminant(&piece_at_e8), expected_discriminant);
@@ -491,13 +572,8 @@ mod tests {
         position1.set_piece(white_dummy);
         position1.last_moved_piece = Some(Piece::from(white_dummy));
 
-        let next_position1 = black_pawn.move_piece(
-            &position1,
-            one_down,
-            e1,
-            None,
-            Some(PromotionPiece::Queen),
-        );
+        let next_position1 =
+            black_pawn.move_piece(&position1, one_down, e1, None, Some(PromotionPiece::Queen));
         let piece_at_e1 = next_position1.get_piece(&e1).expect("piece must be at e1");
         assert!(matches!(piece_at_e1, Piece::Queen(_)));
 
@@ -538,5 +614,23 @@ mod tests {
         );
         let piece_at_e3 = next_position.get_piece(&e3).expect("piece must be at e3");
         assert!(matches!(piece_at_e3, Piece::Pawn(_)));
+    }
+
+    #[test]
+    fn pawn_direction_and_promotion_rank() {
+        let echiquier = Echiquier::new();
+        let e2 = echiquier.get_case(1, 4);
+        let e7 = echiquier.get_case(6, 4);
+        let e8 = echiquier.get_case(7, 4);
+        let e1 = echiquier.get_case(0, 4);
+        let white_pawn = Pawn::new(e2, true);
+        let black_pawn = Pawn::new(e7, false);
+
+        assert_eq!(1, white_pawn.way());
+        assert_eq!(-1, black_pawn.way());
+        assert!(white_pawn.is_promotion_rank(&e8));
+        assert!(!white_pawn.is_promotion_rank(&e7));
+        assert!(black_pawn.is_promotion_rank(&e1));
+        assert!(!black_pawn.is_promotion_rank(&e2));
     }
 }

@@ -52,10 +52,10 @@ A chessboard written in RUST
   - [x] `Queen`
     - [x] move horizontally, vertically, or diagonally any number of squares
     - [x] cannot jump over pieces
-  - [ ] `King`
+  - [x] `King`
     - [x] move one square any direction
     - [x] cannot move onto an attacked square
-    - [ ] castling (kingside and queenside, when king and rook have `last_move.is_none()`, path is clear, and not passing through check)
+    - [x] castling (kingside and queenside, when king and rook have `last_move.is_none()`, path is clear, and not passing through check)
     - [x] `is_in_check`
     - [x] `is_in_checkmate`
     - [x] `is_in_stalemate` (`pat`)

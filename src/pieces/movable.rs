@@ -55,30 +55,39 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         captures
     }
 
+    fn leaves_king_in_check(
+        &self,
+        position: &Position,
+        target_case: Case,
+        piece_taken: Option<&Piece>,
+    ) -> bool {
+        let Some(piece) = position.get_piece(&self.case) else {
+            return false;
+        };
+        let mut next_position = *position;
+        next_position.remove_piece(self);
+        if let Some(taken) = piece_taken {
+            next_position.remove_piece(taken);
+        }
+        next_position.set_piece(piece.with_case(target_case));
+        next_position
+            .get_pieces::<King>(self.is_white)
+            .into_iter()
+            .any(|king| king.is_in_check(&next_position))
+    }
+
     fn allowed_moves(&self, position: &Position) -> Vec<PieceMove> {
         let mut moves = Vec::new();
         for piece_move in self.candidate_moves(position) {
             if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move)
                 && !position.is_case_occupied(&target_case)
+                && !self.leaves_king_in_check(position, target_case, None)
             {
-                let leaves_king_in_check = match position.get_piece(&self.case) {
-                    Some(piece) => {
-                        let mut next_position = *position;
-                        next_position.remove_piece(self);
-                        next_position.set_piece(piece.with_case(target_case));
-                        next_position
-                            .get_pieces::<King>(self.is_white)
-                            .into_iter()
-                            .any(|king| king.is_in_check(&next_position))
-                    }
-                    None => false,
-                };
-                if !leaves_king_in_check {
-                    moves.push(piece_move);
-                }
+                moves.push(piece_move);
             }
         }
         moves.extend(self.castling_moves(position));
+        moves.extend(self.allowed_captures(position).into_iter().map(|(m, _)| m));
         moves
     }
 
@@ -89,7 +98,11 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
     fn allowed_captures(&self, position: &Position) -> Vec<(PieceMove, Piece)> {
         let mut captures = Vec::new();
         for (piece_move, piece_taken) in self.candidate_captures(position) {
-            if !matches!(piece_taken, Piece::King(_)) {
+            if !matches!(piece_taken, Piece::King(_))
+                && let Some(target_case) =
+                    position.echiquier.get_relative_case(&self.case, piece_move)
+                && !self.leaves_king_in_check(position, target_case, Some(&piece_taken))
+            {
                 captures.push((piece_move, piece_taken));
             }
         }
@@ -97,7 +110,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
     }
 
     fn is_move_allowed(&self, position: &Position, piece_move: PieceMove) -> bool {
-        return (&self).allowed_moves(position).contains(&piece_move);
+        self.allowed_moves(position).contains(&piece_move)
     }
 
     fn is_capture_allowed(
@@ -106,9 +119,8 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         piece_move: PieceMove,
         piece_taken: Piece,
     ) -> bool {
-        return (&self)
-            .allowed_captures(position)
-            .contains(&(piece_move, piece_taken));
+        self.allowed_captures(position)
+            .contains(&(piece_move, piece_taken))
     }
 
     fn has_never_moved(&self) -> bool {
@@ -127,6 +139,8 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
     ) -> Option<Piece> {
         panic!("Not implemented")
     }
+
+    fn after_move<'a>(&self, _position: &mut Position<'a>, _piece_move: PieceMove) {}
 
     fn move_piece<'a>(
         &mut self,
@@ -152,7 +166,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
                 next_position.remove_piece(&taken);
             }
             None => {
-                if !self.is_move_allowed(position, piece_move) {
+                if position.is_case_occupied(&case) || !self.is_move_allowed(position, piece_move) {
                     panic!("forbidden move!");
                 }
             }
@@ -168,6 +182,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
             None => Piece::from(*self),
         };
         next_position.set_piece(moved_piece);
+        self.after_move(&mut next_position, piece_move);
         next_position.last_moved_piece = Some(moved_piece);
         next_position
     }
@@ -472,5 +487,72 @@ mod tests {
             None,
             Some(PromotionPiece::Queen),
         );
+    }
+
+    #[test]
+    fn allowed_captures_prevents_pinned_piece_from_capturing_and_leaving_king_in_check() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let e2 = position.echiquier.get_case(1, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let d3 = position.echiquier.get_case(2, 3);
+        let king = King::new(e1, true);
+        let bishop = Bishop::new(e2, true);
+        let enemy_rook = Rook::new(e8, false);
+        let enemy_pawn = Pawn::new(d3, false);
+
+        position.set_piece(king);
+        position.set_piece(bishop);
+        position.set_piece(enemy_rook);
+        position.set_piece(enemy_pawn);
+
+        // Bishop is pinned along the e-file by enemy rook at e8.
+        // Capturing the pawn at d3 would leave king in check, so allowed_captures must be empty.
+        let captures = bishop.allowed_captures(&position);
+        assert!(captures.is_empty());
+    }
+
+    #[test]
+    fn allowed_captures_allows_capturing_pinner_or_interposing_attacker() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let c3 = position.echiquier.get_case(2, 2);
+        let a5 = position.echiquier.get_case(4, 0);
+        let king = King::new(e1, true);
+        let bishop = Bishop::new(c3, true);
+        let enemy_bishop = Bishop::new(a5, false);
+
+        position.set_piece(king);
+        position.set_piece(bishop);
+        position.set_piece(enemy_bishop);
+
+        // Bishop pinned along diagonal a5-e1 by enemy bishop on a5.
+        // Capturing the pinner on a5 resolves check, so it must be allowed!
+        let captures = bishop.allowed_captures(&position);
+        let capture_pinner = PieceMove { right: -2, up: 2 };
+        assert_eq!(vec![(capture_pinner, Piece::from(enemy_bishop))], captures);
+    }
+
+    #[test]
+    fn king_cannot_capture_defended_piece() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let e2 = position.echiquier.get_case(1, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let king = King::new(e1, true);
+        let enemy_pawn = Pawn::new(e2, false);
+        let enemy_rook = Rook::new(e8, false);
+
+        position.set_piece(king);
+        position.set_piece(enemy_pawn);
+        position.set_piece(enemy_rook);
+
+        // Pawn on e2 is defended by Rook on e8 along column e.
+        // King cannot capture pawn on e2 because it leaves king in check.
+        let captures = king.allowed_captures(&position);
+        assert!(captures.is_empty());
     }
 }

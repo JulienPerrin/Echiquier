@@ -127,6 +127,29 @@ impl Movable for King {
     fn castling_moves(&self, position: &Position) -> Vec<PieceMove> {
         self.allowed_castling_moves(position)
     }
+
+    fn after_move<'a>(&self, position: &mut Position<'a>, piece_move: PieceMove) {
+        let rank = self.case.rank;
+        if piece_move == (PieceMove { right: 2, up: 0 }) {
+            let rook_h = position.echiquier.get_case(rank, 7);
+            let rook_f = position.echiquier.get_case(rank, 5);
+            if let Some(Piece::Rook(mut rook)) = position.get_piece(&rook_h) {
+                position.remove_piece(&rook);
+                rook.case = rook_f;
+                rook.last_move = Some(PieceMove { right: -2, up: 0 });
+                position.set_piece(rook);
+            }
+        } else if piece_move == (PieceMove { right: -2, up: 0 }) {
+            let rook_a = position.echiquier.get_case(rank, 0);
+            let rook_d = position.echiquier.get_case(rank, 3);
+            if let Some(Piece::Rook(mut rook)) = position.get_piece(&rook_a) {
+                position.remove_piece(&rook);
+                rook.case = rook_d;
+                rook.last_move = Some(PieceMove { right: 3, up: 0 });
+                position.set_piece(rook);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -450,6 +473,35 @@ mod tests {
     }
 
     #[test]
+    fn has_moves_returns_true_when_only_captures_are_available() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a8 = position.echiquier.get_case(7, 0);
+        let b8 = position.echiquier.get_case(7, 1);
+        let h7 = position.echiquier.get_case(6, 7);
+
+        let black_king = King::new(a8, false);
+        let white_rook_b8 = Rook::new(b8, true);
+        // White Queen on h7 controls the 7th rank (a7 and b7), so king has no quiet moves
+        let white_queen_h7 = Queen::new(h7, true);
+
+        position.set_piece(black_king);
+        position.set_piece(white_rook_b8);
+        position.set_piece(white_queen_h7);
+        position.last_moved_piece = Some(Piece::from(white_queen_h7));
+
+        // Black king has no quiet moves, but allowed_moves includes the allowed capture on b8!
+        assert_eq!(
+            vec![PieceMove { right: 1, up: 0 }],
+            black_king.allowed_moves(&position)
+        );
+        assert!(!black_king.allowed_captures(&position).is_empty());
+        // Therefore has_moves must be true!
+        assert!(black_king.has_moves(&position));
+        assert!(!black_king.is_in_checkmate(&position));
+    }
+
+    #[test]
     #[should_panic(expected = "a king can not be in check it is not his turn")]
     fn is_in_check_panics_if_not_his_turn() {
         let echiquier = Echiquier::new();
@@ -653,5 +705,96 @@ mod tests {
         let castling5 = white_king.allowed_castling_moves(&pos5);
         assert!(!castling5.contains(&PieceMove { right: 2, up: 0 }));
         assert!(!castling5.contains(&PieceMove { right: -2, up: 0 }));
+    }
+
+    #[test]
+    fn king_castling_moves_the_rook_as_well() {
+        let echiquier = Echiquier::new();
+
+        // 1. White Kingside castling
+        let mut pos1 = Position::new(&echiquier);
+        let e1 = echiquier.get_case(0, 4);
+        let g1 = echiquier.get_case(0, 6);
+        let h1 = echiquier.get_case(0, 7);
+        let f1 = echiquier.get_case(0, 5);
+        let mut white_king = King::new(e1, true);
+        let rook_h1 = Rook::new(h1, true);
+        pos1.set_piece(white_king);
+        pos1.set_piece(rook_h1);
+
+        let next_pos1 =
+            white_king.move_piece(&pos1, PieceMove { right: 2, up: 0 }, g1, None, None);
+        assert_eq!(None, next_pos1.get_piece(&e1));
+        assert_eq!(None, next_pos1.get_piece(&h1));
+        assert_eq!(Some(Piece::from(white_king)), next_pos1.get_piece(&g1));
+        let moved_rook_f1 = next_pos1.get_piece(&f1).unwrap();
+        assert_eq!(f1, moved_rook_f1.case);
+        assert_eq!(
+            Some(PieceMove { right: -2, up: 0 }),
+            moved_rook_f1.last_move
+        );
+
+        // 2. White Queenside castling
+        let mut pos2 = Position::new(&echiquier);
+        let c1 = echiquier.get_case(0, 2);
+        let a1 = echiquier.get_case(0, 0);
+        let d1 = echiquier.get_case(0, 3);
+        let mut white_king2 = King::new(e1, true);
+        let rook_a1 = Rook::new(a1, true);
+        pos2.set_piece(white_king2);
+        pos2.set_piece(rook_a1);
+
+        let next_pos2 =
+            white_king2.move_piece(&pos2, PieceMove { right: -2, up: 0 }, c1, None, None);
+        assert_eq!(None, next_pos2.get_piece(&e1));
+        assert_eq!(None, next_pos2.get_piece(&a1));
+        assert_eq!(Some(Piece::from(white_king2)), next_pos2.get_piece(&c1));
+        let moved_rook_d1 = next_pos2.get_piece(&d1).unwrap();
+        assert_eq!(d1, moved_rook_d1.case);
+        assert_eq!(Some(PieceMove { right: 3, up: 0 }), moved_rook_d1.last_move);
+
+        // 3. Black Kingside castling
+        let mut pos3 = Position::new(&echiquier);
+        let e8 = echiquier.get_case(7, 4);
+        let g8 = echiquier.get_case(7, 6);
+        let h8 = echiquier.get_case(7, 7);
+        let f8 = echiquier.get_case(7, 5);
+        let mut black_king = King::new(e8, false);
+        let rook_h8 = Rook::new(h8, false);
+        pos3.set_piece(black_king);
+        pos3.set_piece(rook_h8);
+        pos3.last_moved_piece = Some(Piece::from(white_king));
+
+        let next_pos3 =
+            black_king.move_piece(&pos3, PieceMove { right: 2, up: 0 }, g8, None, None);
+        assert_eq!(None, next_pos3.get_piece(&e8));
+        assert_eq!(None, next_pos3.get_piece(&h8));
+        assert_eq!(Some(Piece::from(black_king)), next_pos3.get_piece(&g8));
+        let moved_rook_f8 = next_pos3.get_piece(&f8).unwrap();
+        assert_eq!(f8, moved_rook_f8.case);
+        assert_eq!(
+            Some(PieceMove { right: -2, up: 0 }),
+            moved_rook_f8.last_move
+        );
+
+        // 4. Black Queenside castling
+        let mut pos4 = Position::new(&echiquier);
+        let c8 = echiquier.get_case(7, 2);
+        let a8 = echiquier.get_case(7, 0);
+        let d8 = echiquier.get_case(7, 3);
+        let mut black_king2 = King::new(e8, false);
+        let rook_a8 = Rook::new(a8, false);
+        pos4.set_piece(black_king2);
+        pos4.set_piece(rook_a8);
+        pos4.last_moved_piece = Some(Piece::from(white_king));
+
+        let next_pos4 =
+            black_king2.move_piece(&pos4, PieceMove { right: -2, up: 0 }, c8, None, None);
+        assert_eq!(None, next_pos4.get_piece(&e8));
+        assert_eq!(None, next_pos4.get_piece(&a8));
+        assert_eq!(Some(Piece::from(black_king2)), next_pos4.get_piece(&c8));
+        let moved_rook_d8 = next_pos4.get_piece(&d8).unwrap();
+        assert_eq!(d8, moved_rook_d8.case);
+        assert_eq!(Some(PieceMove { right: 3, up: 0 }), moved_rook_d8.last_move);
     }
 }
