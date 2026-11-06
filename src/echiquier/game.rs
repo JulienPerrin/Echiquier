@@ -110,7 +110,10 @@ impl<'a> Game<'a> {
 
     pub fn play_move<T: Movable>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a> {
         let current = *self.current_position();
-        let target_case = current.echiquier.get_relative_case(&piece.case, piece_move).expect("target case out of bounds!");
+        let target_case = current
+            .echiquier
+            .get_relative_case(&piece.case, piece_move)
+            .expect("target case out of bounds!");
         let piece_taken = current.get_piece(&target_case);
         let next_position = piece.move_piece(&current, piece_move, target_case, piece_taken);
         self.positions.push(next_position);
@@ -178,8 +181,14 @@ mod tests {
         for rank in 0..=1 {
             for file in 0..8 {
                 let case = INITIAL_POSITION.echiquier.get_case(rank, file);
-                let piece = INITIAL_POSITION.get_piece(&case).expect("piece must exist at initial row");
-                assert!(piece.is_white, "piece at rank {} file {} must be white", rank, file);
+                let piece = INITIAL_POSITION
+                    .get_piece(&case)
+                    .expect("piece must exist at initial row");
+                assert!(
+                    piece.is_white,
+                    "piece at rank {} file {} must be white",
+                    rank, file
+                );
             }
         }
 
@@ -187,7 +196,12 @@ mod tests {
         for rank in 2..=5 {
             for file in 0..8 {
                 let case = INITIAL_POSITION.echiquier.get_case(rank, file);
-                assert!(INITIAL_POSITION.get_piece(&case).is_none(), "square at rank {} file {} must be empty", rank, file);
+                assert!(
+                    INITIAL_POSITION.get_piece(&case).is_none(),
+                    "square at rank {} file {} must be empty",
+                    rank,
+                    file
+                );
             }
         }
 
@@ -195,8 +209,14 @@ mod tests {
         for rank in 6..=7 {
             for file in 0..8 {
                 let case = INITIAL_POSITION.echiquier.get_case(rank, file);
-                let piece = INITIAL_POSITION.get_piece(&case).expect("piece must exist at initial row");
-                assert!(!piece.is_white, "piece at rank {} file {} must be black", rank, file);
+                let piece = INITIAL_POSITION
+                    .get_piece(&case)
+                    .expect("piece must exist at initial row");
+                assert!(
+                    !piece.is_white,
+                    "piece at rank {} file {} must be black",
+                    rank, file
+                );
             }
         }
     }
@@ -208,14 +228,14 @@ mod tests {
             "\
 8 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
 7 ♙ ♙ ♙ ♙ ♙ ♙ ♙ ♙
-6 x x x x x x x x
-5 x x x x x x x x
-4 x x x x x x x x
-3 x x x x x x x x
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
 2 ♟ ♟ ♟ ♟ ♟ ♟ ♟ ♟
 1 ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
   A B C D E F G H",
-            game.to_string()
+            game.current_position().to_string()
         );
     }
 }

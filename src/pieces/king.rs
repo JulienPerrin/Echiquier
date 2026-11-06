@@ -1,12 +1,12 @@
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 
+use super::movable::Movable;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::piece::Piece;
 use crate::pieces::piece_kind::PieceKind;
-use super::movable::Movable;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct King {
@@ -77,7 +77,10 @@ mod tests {
         let e5 = position.echiquier.get_case(4, 4);
         let next_position = king.move_piece(&position, one_up, e5, None);
         assert_eq!(e5, king.case);
-        assert_eq!(Some(*king), next_position.pieces[(e5.rank * 8 + e5.file) as usize]);
+        assert_eq!(
+            Some(*king),
+            next_position.pieces[(e5.rank * 8 + e5.file) as usize]
+        );
         assert_eq!("♚", king.to_string());
         let black_king = King::new(e5, false);
         assert_eq!("♔", black_king.to_string());
@@ -104,7 +107,8 @@ mod tests {
         );
         assert!(white_king.is_capture_allowed(&position, capture_move, *black_pawn_a2));
 
-        let next_position = white_king.move_piece(&position, capture_move, a2, Some(*black_pawn_a2));
+        let next_position =
+            white_king.move_piece(&position, capture_move, a2, Some(*black_pawn_a2));
         assert_eq!(a2, white_king.case);
         assert_eq!(Some(*white_king), next_position.get_piece(&a2));
         assert_eq!(None, next_position.get_piece(&a1));

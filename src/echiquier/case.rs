@@ -1,6 +1,6 @@
 use std::clone::Clone;
 use std::cmp::PartialEq;
-use std::fmt::{self, Display, Debug};
+use std::fmt::{self, Debug, Display};
 use std::marker::Copy;
 
 #[derive(Clone, Copy, Debug, PartialEq)]

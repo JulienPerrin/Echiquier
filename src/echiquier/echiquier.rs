@@ -234,10 +234,26 @@ mod tests {
         let echiquier: Echiquier = Echiquier::new();
         assert!(echiquier.exists_case(0, 0));
         let a1: Case = echiquier.get_case(0, 0);
-        assert!(echiquier.get_relative_case(&a1, PieceMove { right: -1, up: 0 }).is_none());
-        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 0, up: -1 }).is_none());
-        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 8, up: 0 }).is_none());
-        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 0, up: 8 }).is_none());
+        assert!(
+            echiquier
+                .get_relative_case(&a1, PieceMove { right: -1, up: 0 })
+                .is_none()
+        );
+        assert!(
+            echiquier
+                .get_relative_case(&a1, PieceMove { right: 0, up: -1 })
+                .is_none()
+        );
+        assert!(
+            echiquier
+                .get_relative_case(&a1, PieceMove { right: 8, up: 0 })
+                .is_none()
+        );
+        assert!(
+            echiquier
+                .get_relative_case(&a1, PieceMove { right: 0, up: 8 })
+                .is_none()
+        );
     }
 
     #[test]

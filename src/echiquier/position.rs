@@ -53,33 +53,54 @@ impl<'a> Position<'a> {
     pub fn is_case_occupied(&self, case: &Case) -> bool {
         self.get_piece(case).is_some()
     }
+}
 
-    fn display_square(&self, index: usize) -> String {
-        match self.pieces[index] {
-            Some(piece) => match piece.kind {
-                PieceKind::PAWN => Pawn { piece }.to_string(),
-                PieceKind::KNIGHT => Knight { piece }.to_string(),
-                PieceKind::BISHOP => Bishop { piece }.to_string(),
-                PieceKind::ROOK => Rook { piece }.to_string(),
-                PieceKind::QUEEN => Queen { piece }.to_string(),
-                PieceKind::KING => King { piece }.to_string(),
-            },
-            None => String::from("x"),
-        }
+const EMPTY_SQUARE_SYMBOL: char = '·';
+const FILES: [&str; 8] = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+/// ANSI escape codes for black pieces: black foreground on a light grey background,
+/// so they stay visible on dark terminals.
+const BLACK_PIECE_STYLE: &str = "\x1b[30;47m";
+const RESET_STYLE: &str = "\x1b[0m";
+
+/// Both sides share the solid glyph (the white piece's `Display`); black pieces are colourised black.
+fn piece_symbol(piece: Piece) -> String {
+    if piece.is_white {
+        glyph(piece)
+    } else {
+        let glyph = glyph(Piece {
+            is_white: true,
+            ..piece
+        });
+        format!("{BLACK_PIECE_STYLE}{glyph}{RESET_STYLE}")
     }
 }
 
+fn glyph(piece: Piece) -> String {
+    match piece.kind {
+        PieceKind::PAWN => Pawn { piece }.to_string(),
+        PieceKind::KNIGHT => Knight { piece }.to_string(),
+        PieceKind::BISHOP => Bishop { piece }.to_string(),
+        PieceKind::ROOK => Rook { piece }.to_string(),
+        PieceKind::QUEEN => Queen { piece }.to_string(),
+        PieceKind::KING => King { piece }.to_string(),
+    }
+}
+
+/// Board with solid glyphs for both sides (black pieces colourised black on light grey)
+/// and a visible dot for empty squares.
 impl<'a> Display for Position<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for rank in (0..8).rev() {
-            write!(f, "{}", rank + 1)?;
-            for file in 0..8 {
-                let index = rank * 8 + file;
-                write!(f, " {}", self.display_square(index))?;
-            }
-            writeln!(f)?;
+            let squares: Vec<String> = (0..8)
+                .map(|file| match self.pieces[rank * 8 + file] {
+                    Some(piece) => piece_symbol(piece),
+                    None => EMPTY_SQUARE_SYMBOL.to_string(),
+                })
+                .collect();
+            writeln!(f, "{} {}", rank + 1, squares.join(" "))?;
         }
-        write!(f, "  A B C D E F G H")
+        write!(f, "  {}", FILES.join(" "))
     }
 }
 
@@ -98,14 +119,14 @@ mod tests {
 
         assert_eq!(
             "\
-8 x x x x x x x x
-7 x x x x x x x x
-6 x x x x x x x x
-5 x x x x x x x x
-4 x x x x x x x x
-3 x x x x x x x x
-2 x x x x ♟ x x x
-1 x x x x x x x x
+8 · · · · · · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · ♟ · · ·
+1 · · · · · · · ·
   A B C D E F G H",
             position.to_string()
         );
@@ -121,6 +142,7 @@ mod tests {
         let d1 = position.echiquier.get_case(0, 3);
         let e1 = position.echiquier.get_case(0, 4);
         let f2 = position.echiquier.get_case(1, 5);
+        let e8 = position.echiquier.get_case(7, 4);
 
         position.set_piece(*Rook::new(a1, true));
         position.set_piece(*Knight::new(b1, true));
@@ -128,17 +150,18 @@ mod tests {
         position.set_piece(*Queen::new(d1, true));
         position.set_piece(*King::new(e1, true));
         position.set_piece(*Pawn::new(f2, true));
+        position.set_piece(*King::new(e8, false));
 
         assert_eq!(
             "\
-8 x x x x x x x x
-7 x x x x x x x x
-6 x x x x x x x x
-5 x x x x x x x x
-4 x x x x x x x x
-3 x x x x x x x x
-2 x x x x x ♟ x x
-1 ♜ ♞ ♝ ♛ ♚ x x x
+8 · · · · ♔ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · ♟ · ·
+1 ♜ ♞ ♝ ♛ ♚ · · ·
   A B C D E F G H",
             position.to_string()
         );

@@ -1,12 +1,12 @@
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 
+use super::movable::Movable;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::piece::Piece;
 use crate::pieces::piece_kind::PieceKind;
-use super::movable::Movable;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pawn {
@@ -44,7 +44,10 @@ impl Display for Pawn {
 impl Movable for Pawn {
     fn candidate_moves(&self, position: &Position) -> Vec<PieceMove> {
         let direction = if self.is_white { 1 } else { -1 };
-        let one_step = PieceMove { right: 0, up: direction };
+        let one_step = PieceMove {
+            right: 0,
+            up: direction,
+        };
 
         let Some(one_step_case) = position.echiquier.get_relative_case(&self.case, one_step) else {
             return Vec::new();
@@ -56,8 +59,12 @@ impl Movable for Pawn {
         let mut moves = vec![one_step];
 
         if self.last_move.is_none() {
-            let two_steps = PieceMove { right: 0, up: direction * 2 };
-            if let Some(two_steps_case) = position.echiquier.get_relative_case(&self.case, two_steps)
+            let two_steps = PieceMove {
+                right: 0,
+                up: direction * 2,
+            };
+            if let Some(two_steps_case) =
+                position.echiquier.get_relative_case(&self.case, two_steps)
                 && !position.is_case_occupied(&two_steps_case)
             {
                 moves.push(two_steps);
@@ -72,7 +79,10 @@ impl Movable for Pawn {
         let mut captures = Vec::new();
 
         for right in [-1, 1] {
-            let diagonal_move = PieceMove { right, up: direction };
+            let diagonal_move = PieceMove {
+                right,
+                up: direction,
+            };
             if let Some(target_piece) = position.get_relative_piece(&self.case, diagonal_move)
                 && target_piece.is_white != self.is_white
             {
@@ -107,7 +117,10 @@ mod tests {
         let e3 = position.echiquier.get_case(2, 4);
         let next_position = pawn.move_piece(&position, one_up, e3, None);
         assert_eq!(e3, pawn.case);
-        assert_eq!(Some(*pawn), next_position.pieces[(e3.rank * 8 + e3.file) as usize]);
+        assert_eq!(
+            Some(*pawn),
+            next_position.pieces[(e3.rank * 8 + e3.file) as usize]
+        );
         assert_eq!(None, next_position.pieces[(e2.rank * 8 + e2.file) as usize]);
 
         assert_eq!(vec![one_up], pawn.allowed_moves(&next_position));
@@ -131,7 +144,10 @@ mod tests {
         let e5 = position.echiquier.get_case(4, 4);
         let next_position = pawn.move_piece(&position, two_down, e5, None);
         assert_eq!(e5, pawn.case);
-        assert_eq!(Some(*pawn), next_position.pieces[(e5.rank * 8 + e5.file) as usize]);
+        assert_eq!(
+            Some(*pawn),
+            next_position.pieces[(e5.rank * 8 + e5.file) as usize]
+        );
         assert_eq!(None, next_position.pieces[(e7.rank * 8 + e7.file) as usize]);
 
         assert_eq!(vec![one_down], pawn.allowed_moves(&next_position));
@@ -180,7 +196,8 @@ mod tests {
         );
         assert!(white_pawn.is_capture_allowed(&position, capture_move, *black_pawn_d5));
 
-        let next_position = white_pawn.move_piece(&position, capture_move, d5, Some(*black_pawn_d5));
+        let next_position =
+            white_pawn.move_piece(&position, capture_move, d5, Some(*black_pawn_d5));
         assert_eq!(d5, white_pawn.case);
         assert_eq!(Some(*white_pawn), next_position.get_piece(&d5));
         assert_eq!(None, next_position.get_piece(&e4));
@@ -198,7 +215,10 @@ mod tests {
             e4,
             Some(taken_white_pawn),
         );
-        assert_eq!(Some(*black_pawn_for_capture), after_black_capture.get_piece(&e4));
+        assert_eq!(
+            Some(*black_pawn_for_capture),
+            after_black_capture.get_piece(&e4)
+        );
         assert_eq!(None, after_black_capture.get_piece(&d5));
     }
 

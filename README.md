@@ -30,6 +30,7 @@ A chessboard written in RUST
 * [x] Implement `Pawn` 1-square forward movement (up for white, down for black)
 * [x] Track `last_move: Option<PieceMove>` on `Piece`
 * [x] Improve `Position` display with Unicode chess symbols (white/black pieces)
+* [x] Plain console board for `cargo run`: outline vs solid glyphs and `·` for empty squares
 * [ ] Complete `Pawn` rules:
   * [x] 2-square initial move when `last_move.is_none()`
   * [x] Prevent moving onto an occupied square
@@ -57,9 +58,11 @@ A chessboard written in RUST
     * [ ] `is_in_check`
     * [ ] `is_in_checkmate`
     * [ ] `is_in_stalemate` (`pat`)
-* [ ] Implement board collision & capture rules
-  * [ ] cannot jump over pieces except `Knight`
-  * [ ] cannot capture own pieces
+* [x] Implement board collision & capture rules
+  * [x] cannot jump over pieces except `Knight` (`sliding_candidate_moves` stops at the first occupied square)
+  * [x] cannot capture own pieces
+    * [x] captures of own-colour pieces are filtered out (`candidate_captures`)
+    * [x] reject non-capture moves onto an occupied square (`allowed_moves` excludes occupied target squares)
 * [ ] Implement `Pin` rule (a piece cannot move if doing so exposes its own `King` to check)
 * [x] Create starting `Position` with all 32 pieces on their initial squares
   * [x] Declare `INITIAL_POSITION` as a `const` in `game.rs` with all `Pawn`s and `King`s

@@ -2,15 +2,19 @@ use std::fmt::Display;
 use std::ops::DerefMut;
 
 use crate::echiquier::case::Case;
-use crate::echiquier::position::Position;
 use crate::echiquier::piece_move::PieceMove;
+use crate::echiquier::position::Position;
 use crate::pieces::piece::Piece;
 use crate::pieces::piece_kind::PieceKind;
 
 pub trait Movable: DerefMut<Target = Piece> + Display {
     fn candidate_moves(&self, position: &Position) -> Vec<PieceMove>;
 
-    fn sliding_candidate_moves(&self, position: &Position, directions: &[(i8, i8)]) -> Vec<PieceMove> {
+    fn sliding_candidate_moves(
+        &self,
+        position: &Position,
+        directions: &[(i8, i8)],
+    ) -> Vec<PieceMove> {
         let mut moves = Vec::new();
 
         for &(right_step, up_step) in directions {
@@ -21,7 +25,9 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
                     right: right_step * distance,
                     up: up_step * distance,
                 };
-                if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move) {
+                if let Some(target_case) =
+                    position.echiquier.get_relative_case(&self.case, piece_move)
+                {
                     moves.push(piece_move);
                     blocked = position.is_case_occupied(&target_case);
                     distance += 1;
@@ -51,7 +57,9 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
     fn allowed_moves(&self, position: &Position) -> Vec<PieceMove> {
         let mut moves = Vec::new();
         for piece_move in self.candidate_moves(position) {
-            if position.echiquier.get_relative_case(&self.case, piece_move).is_some() {
+            if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move)
+                && !position.is_case_occupied(&target_case)
+            {
                 moves.push(piece_move);
             }
         }
@@ -62,7 +70,10 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
         let mut captures = Vec::new();
         for (piece_move, piece_taken) in self.candidate_captures(position) {
             if piece_taken.kind != PieceKind::KING
-                && position.echiquier.get_relative_case(&self.case, piece_move).is_some()
+                && position
+                    .echiquier
+                    .get_relative_case(&self.case, piece_move)
+                    .is_some()
             {
                 captures.push((piece_move, piece_taken));
             }
@@ -74,8 +85,15 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
         return (&self).allowed_moves(position).contains(&piece_move);
     }
 
-    fn is_capture_allowed(&self, position: &Position, piece_move: PieceMove, piece_taken: Piece) -> bool {
-        return (&self).allowed_captures(position).contains(&(piece_move, piece_taken));
+    fn is_capture_allowed(
+        &self,
+        position: &Position,
+        piece_move: PieceMove,
+        piece_taken: Piece,
+    ) -> bool {
+        return (&self)
+            .allowed_captures(position)
+            .contains(&(piece_move, piece_taken));
     }
 
     fn move_piece<'a>(
@@ -113,6 +131,7 @@ mod tests {
     use crate::echiquier::echiquier::Echiquier;
     use crate::pieces::king::King;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::rook::Rook;
 
     #[test]
     #[should_panic(expected = "forbidden move!")]
@@ -141,7 +160,27 @@ mod tests {
         let friendly_pawn = Pawn::new(e5, true);
         position.set_piece(*friendly_pawn);
 
-        king.move_piece(&position, PieceMove { right: 0, up: 1 }, e5, Some(*friendly_pawn));
+        king.move_piece(
+            &position,
+            PieceMove { right: 0, up: 1 },
+            e5,
+            Some(*friendly_pawn),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "forbidden move!")]
+    fn move_piece_panics_on_quiet_move_onto_occupied_case() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let mut rook = Rook::new(a1, true);
+        position.set_piece(*rook);
+
+        let a3 = position.echiquier.get_case(2, 0);
+        position.set_piece(*Pawn::new(a3, true));
+
+        rook.move_piece(&position, PieceMove { right: 0, up: 2 }, a3, None);
     }
 
     #[test]

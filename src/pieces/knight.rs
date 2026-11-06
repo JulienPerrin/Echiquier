@@ -76,7 +76,10 @@ mod tests {
         for dr in -1..=1 {
             for du in -1..=1 {
                 if dr != 0 || du != 0 {
-                    if let Some(adjacent) = position.echiquier.get_relative_case(&e4, PieceMove { right: dr, up: du }) {
+                    if let Some(adjacent) = position
+                        .echiquier
+                        .get_relative_case(&e4, PieceMove { right: dr, up: du })
+                    {
                         position.set_piece(*Pawn::new(adjacent, true));
                     }
                 }
@@ -125,7 +128,8 @@ mod tests {
         );
         assert!(white_knight.is_capture_allowed(&position, capture_move, *black_pawn_c3));
 
-        let next_position = white_knight.move_piece(&position, capture_move, c3, Some(*black_pawn_c3));
+        let next_position =
+            white_knight.move_piece(&position, capture_move, c3, Some(*black_pawn_c3));
         assert_eq!(c3, white_knight.case);
         assert_eq!(Some(*white_knight), next_position.get_piece(&c3));
         assert_eq!(None, next_position.get_piece(&b1));

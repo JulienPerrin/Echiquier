@@ -21,12 +21,7 @@ impl Direction {
     pub const DOWN_LEFT: (i8, i8) = (-1, -1);
     pub const DOWN_RIGHT: (i8, i8) = (1, -1);
 
-    pub const ORTHOGONAL: [(i8, i8); 4] = [
-        Self::UP,
-        Self::DOWN,
-        Self::LEFT,
-        Self::RIGHT,
-    ];
+    pub const ORTHOGONAL: [(i8, i8); 4] = [Self::UP, Self::DOWN, Self::LEFT, Self::RIGHT];
 
     pub const DIAGONAL: [(i8, i8); 4] = [
         Self::UP_LEFT,

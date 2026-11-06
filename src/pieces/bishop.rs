@@ -72,11 +72,11 @@ mod tests {
         let allowed = bishop.allowed_moves(&position);
         // From c1:
         // diagonal up-left: b2 (-1, 1), a3 (-2, 2)
-        // diagonal up-right: d2 (1, 1), e3 (2, 2) [blocked at e3, stops there]
+        // diagonal up-right: d2 (1, 1), but not e3 (2, 2) [occupied by a friendly pawn]
         assert!(allowed.contains(&PieceMove { right: -1, up: 1 }));
         assert!(allowed.contains(&PieceMove { right: -2, up: 2 }));
         assert!(allowed.contains(&PieceMove { right: 1, up: 1 }));
-        assert!(allowed.contains(&PieceMove { right: 2, up: 2 }));
+        assert!(!allowed.contains(&PieceMove { right: 2, up: 2 }));
         // Cannot jump over e3 to f4 (3, 3) or g5 (4, 4)
         assert!(!allowed.contains(&PieceMove { right: 3, up: 3 }));
         assert!(!allowed.contains(&PieceMove { right: 4, up: 4 }));
@@ -110,9 +110,14 @@ mod tests {
         assert!(white_bishop.is_capture_allowed(&position, capture_move, *black_pawn_e3));
 
         // Cannot jump past e3 to f4
-        assert!(!white_bishop.allowed_moves(&position).contains(&PieceMove { right: 3, up: 3 }));
+        assert!(
+            !white_bishop
+                .allowed_moves(&position)
+                .contains(&PieceMove { right: 3, up: 3 })
+        );
 
-        let next_position = white_bishop.move_piece(&position, capture_move, e3, Some(*black_pawn_e3));
+        let next_position =
+            white_bishop.move_piece(&position, capture_move, e3, Some(*black_pawn_e3));
         assert_eq!(e3, white_bishop.case);
         assert_eq!(Some(*white_bishop), next_position.get_piece(&e3));
         assert_eq!(None, next_position.get_piece(&c1));

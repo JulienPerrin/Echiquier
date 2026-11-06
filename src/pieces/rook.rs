@@ -73,9 +73,9 @@ mod tests {
         position.set_piece(*friendly_pawn);
 
         let allowed = rook.allowed_moves(&position);
-        // Can move up to a2 (0, 1) and a3 (0, 2), and horizontally along rank 0: b1..h1
+        // Can move up to a2 (0, 1) but not onto the friendly pawn at a3 (0, 2), and horizontally along rank 0: b1..h1
         assert!(allowed.contains(&PieceMove { right: 0, up: 1 }));
-        assert!(allowed.contains(&PieceMove { right: 0, up: 2 }));
+        assert!(!allowed.contains(&PieceMove { right: 0, up: 2 }));
         assert!(allowed.contains(&PieceMove { right: 1, up: 0 }));
         assert!(allowed.contains(&PieceMove { right: 7, up: 0 }));
 
@@ -115,9 +115,14 @@ mod tests {
         assert!(white_rook.is_capture_allowed(&position, capture_move, *black_pawn_a3));
 
         // Cannot jump past a3 to a4
-        assert!(!white_rook.allowed_moves(&position).contains(&PieceMove { right: 0, up: 3 }));
+        assert!(
+            !white_rook
+                .allowed_moves(&position)
+                .contains(&PieceMove { right: 0, up: 3 })
+        );
 
-        let next_position = white_rook.move_piece(&position, capture_move, a3, Some(*black_pawn_a3));
+        let next_position =
+            white_rook.move_piece(&position, capture_move, a3, Some(*black_pawn_a3));
         assert_eq!(a3, white_rook.case);
         assert_eq!(Some(*white_rook), next_position.get_piece(&a3));
         assert_eq!(None, next_position.get_piece(&a1));

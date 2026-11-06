@@ -74,14 +74,14 @@ mod tests {
 
         let allowed = queen.allowed_moves(&position);
 
-        // Vertical moves: d2 (0, 1), d3 (0, 2) allowed, but cannot jump over d3 to d4 (0, 3)
+        // Vertical moves: d2 (0, 1) allowed, d3 (0, 2) occupied by a friendly pawn, cannot jump over d3 to d4 (0, 3)
         assert!(allowed.contains(&PieceMove { right: 0, up: 1 }));
-        assert!(allowed.contains(&PieceMove { right: 0, up: 2 }));
+        assert!(!allowed.contains(&PieceMove { right: 0, up: 2 }));
         assert!(!allowed.contains(&PieceMove { right: 0, up: 3 }));
 
-        // Diagonal up-left moves: c2 (-1, 1), b3 (-2, 2) allowed, but cannot jump over b3 to a4 (-3, 3)
+        // Diagonal up-left moves: c2 (-1, 1) allowed, b3 (-2, 2) occupied by a friendly pawn, cannot jump over b3 to a4 (-3, 3)
         assert!(allowed.contains(&PieceMove { right: -1, up: 1 }));
-        assert!(allowed.contains(&PieceMove { right: -2, up: 2 }));
+        assert!(!allowed.contains(&PieceMove { right: -2, up: 2 }));
         assert!(!allowed.contains(&PieceMove { right: -3, up: 3 }));
 
         // Diagonal up-right moves: e2 (1, 1), f3 (2, 2), g4 (3, 3), h5 (4, 4) unblocked
@@ -121,9 +121,14 @@ mod tests {
         assert!(white_queen.is_capture_allowed(&position, capture_move, *black_pawn_d4));
 
         // Cannot jump past d4 to d5
-        assert!(!white_queen.allowed_moves(&position).contains(&PieceMove { right: 0, up: 4 }));
+        assert!(
+            !white_queen
+                .allowed_moves(&position)
+                .contains(&PieceMove { right: 0, up: 4 })
+        );
 
-        let next_position = white_queen.move_piece(&position, capture_move, d4, Some(*black_pawn_d4));
+        let next_position =
+            white_queen.move_piece(&position, capture_move, d4, Some(*black_pawn_d4));
         assert_eq!(d4, white_queen.case);
         assert_eq!(Some(*white_queen), next_position.get_piece(&d4));
         assert_eq!(None, next_position.get_piece(&d1));
