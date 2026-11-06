@@ -82,7 +82,8 @@ mod tests {
         assert!(!allowed.contains(&PieceMove { right: 4, up: 4 }));
 
         let d2 = position.echiquier.get_case(1, 3);
-        let next_position = bishop.move_piece(&position, PieceMove { right: 1, up: 1 }, d2, None);
+        let next_position =
+            bishop.move_piece(&position, PieceMove { right: 1, up: 1 }, d2, None, None);
         assert_eq!(d2, bishop.case);
         assert_eq!(Some(Piece::from(bishop)), next_position.get_piece(&d2));
         assert_eq!(None, next_position.get_piece(&c1));
@@ -117,7 +118,7 @@ mod tests {
         );
 
         let next_position =
-            white_bishop.move_piece(&position, capture_move, e3, Some(black_pawn_e3.into()));
+            white_bishop.move_piece(&position, capture_move, e3, Some(black_pawn_e3.into()), None);
         assert_eq!(e3, white_bishop.case);
         assert_eq!(
             Some(Piece::from(white_bishop)),

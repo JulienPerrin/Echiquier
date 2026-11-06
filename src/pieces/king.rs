@@ -108,7 +108,7 @@ mod tests {
 
         let one_up = PieceMove { right: 0, up: 1 };
         let e5 = position.echiquier.get_case(4, 4);
-        let next_position = king.move_piece(&position, one_up, e5, None);
+        let next_position = king.move_piece(&position, one_up, e5, None, None);
         assert_eq!(e5, king.case);
         assert_eq!(
             Some(Piece::from(king)),
@@ -141,7 +141,7 @@ mod tests {
         assert!(white_king.is_capture_allowed(&position, capture_move, black_pawn_a2.into()));
 
         let next_position =
-            white_king.move_piece(&position, capture_move, a2, Some(black_pawn_a2.into()));
+            white_king.move_piece(&position, capture_move, a2, Some(black_pawn_a2.into()), None);
         assert_eq!(a2, white_king.case);
         assert_eq!(Some(Piece::from(white_king)), next_position.get_piece(&a2));
         assert_eq!(None, next_position.get_piece(&a1));

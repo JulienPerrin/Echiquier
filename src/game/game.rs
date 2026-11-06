@@ -9,7 +9,7 @@ use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
 use crate::pieces::movable::Movable;
-use crate::pieces::pawn::Pawn;
+use crate::pieces::pawn::{Pawn, PromotionPiece};
 use crate::pieces::piece::Piece;
 use crate::pieces::queen::Queen;
 use crate::pieces::rook::Rook;
@@ -116,6 +116,19 @@ impl<'a> Game<'a> {
         T: Movable + Copy,
         Piece: From<T>,
     {
+        self.play_move_with_promotion(piece, piece_move, None)
+    }
+
+    pub fn play_move_with_promotion<T>(
+        &mut self,
+        piece: &mut T,
+        piece_move: PieceMove,
+        promotion: Option<PromotionPiece>,
+    ) -> &Position<'a>
+    where
+        T: Movable + Copy,
+        Piece: From<T>,
+    {
         let current = *self.current_position();
         let echiquier = current.echiquier;
         let target_case = echiquier
@@ -128,8 +141,8 @@ impl<'a> Game<'a> {
                 .find(|&(m, _)| m == piece_move)
                 .map(|(_, taken)| taken)
         });
-        let next_position = piece.move_piece(&current, piece_move, target_case, piece_taken);
-        self.positions.push(next_position);
+        let next_pos = piece.move_piece(&current, piece_move, target_case, piece_taken, promotion);
+        self.positions.push(next_pos);
         self.current_position()
     }
 
@@ -411,5 +424,58 @@ mod tests {
         let game = Game::new(position);
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::Draw), game.game_result());
+    }
+
+    #[test]
+    fn game_play_move_with_promotion_to_knight() {
+        let mut position = Position::new(&ECHIQUIER);
+        let e7 = position.echiquier.get_case(6, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let mut white_pawn = Pawn::new(e7, true);
+        position.set_piece(white_pawn);
+
+        let mut game = Game::new(position);
+        let next_position = *game.play_move_with_promotion(
+            &mut white_pawn,
+            PieceMove { right: 0, up: 1 },
+            Some(PromotionPiece::Knight),
+        );
+
+        let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
+        assert!(matches!(piece_at_e8, Piece::Knight(_)));
+    }
+
+    #[test]
+    fn game_play_move_without_promotion_keeps_piece() {
+        let mut position = Position::new(&ECHIQUIER);
+        let e7 = position.echiquier.get_case(6, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let mut white_pawn = Pawn::new(e7, true);
+        position.set_piece(white_pawn);
+
+        let mut game = Game::new(position);
+        let next_position = *game.play_move(&mut white_pawn, PieceMove { right: 0, up: 1 });
+
+        let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
+        assert!(matches!(piece_at_e8, Piece::Pawn(_)));
+    }
+
+    #[test]
+    fn game_play_move_with_promotion_to_queen() {
+        let mut position = Position::new(&ECHIQUIER);
+        let e7 = position.echiquier.get_case(6, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let mut white_pawn = Pawn::new(e7, true);
+        position.set_piece(white_pawn);
+
+        let mut game = Game::new(position);
+        let next_position = *game.play_move_with_promotion(
+            &mut white_pawn,
+            PieceMove { right: 0, up: 1 },
+            Some(PromotionPiece::Queen),
+        );
+
+        let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
+        assert!(matches!(piece_at_e8, Piece::Queen(_)));
     }
 }

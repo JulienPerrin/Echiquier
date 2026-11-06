@@ -1,3 +1,4 @@
+use core::panic;
 use std::fmt::Display;
 use std::ops::DerefMut;
 
@@ -5,6 +6,7 @@ use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::king::King;
+use crate::pieces::pawn::PromotionPiece;
 use crate::pieces::piece::{Piece, PieceData};
 
 pub trait Movable: DerefMut<Target = PieceData> + Display {
@@ -108,12 +110,22 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         position.is_turn(self.is_white)
     }
 
+    fn promoted_piece(
+        &self,
+        _target_case: Case,
+        _piece_move: PieceMove,
+        _promotion: PromotionPiece,
+    ) -> Option<Piece> {
+        panic!("Not implemented")
+    }
+
     fn move_piece<'a>(
         &mut self,
         position: &Position<'a>,
         piece_move: PieceMove,
         case: Case,
         piece_taken: Option<Piece>,
+        promotion: Option<PromotionPiece>,
     ) -> Position<'a>
     where
         Self: Sized + Copy,
@@ -139,7 +151,13 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         next_position.remove_piece(self);
         self.case = case;
         self.last_move = Some(piece_move);
-        let moved_piece = Piece::from(*self);
+        let moved_piece = match promotion {
+            Some(promo) => match self.promoted_piece(case, piece_move, promo) {
+                Some(piece) => piece,
+                None => Piece::from(*self),
+            },
+            None => Piece::from(*self),
+        };
         next_position.set_piece(moved_piece);
         next_position.last_moved_piece = Some(moved_piece);
         next_position
@@ -166,7 +184,7 @@ mod tests {
 
         let forbidden_move = PieceMove { right: 1, up: 0 };
         let f2 = position.echiquier.get_case(1, 5);
-        pawn.move_piece(&position, forbidden_move, f2, None);
+        pawn.move_piece(&position, forbidden_move, f2, None, None);
     }
 
     #[test]
@@ -187,6 +205,7 @@ mod tests {
             PieceMove { right: 0, up: 1 },
             e5,
             Some(friendly_pawn.into()),
+            None,
         );
     }
 
@@ -202,7 +221,7 @@ mod tests {
         let a3 = position.echiquier.get_case(2, 0);
         position.set_piece(Pawn::new(a3, true));
 
-        rook.move_piece(&position, PieceMove { right: 0, up: 2 }, a3, None);
+        rook.move_piece(&position, PieceMove { right: 0, up: 2 }, a3, None, None);
     }
 
     #[test]
@@ -217,7 +236,7 @@ mod tests {
         position.last_moved_piece = Some(Piece::from(rook));
 
         let b1 = position.echiquier.get_case(0, 1);
-        rook.move_piece(&position, PieceMove { right: 1, up: 0 }, b1, None);
+        rook.move_piece(&position, PieceMove { right: 1, up: 0 }, b1, None, None);
     }
 
     #[test]
@@ -391,5 +410,58 @@ mod tests {
         let pawn = Pawn::new(e2, true);
         let moves = pawn.allowed_moves(&position);
         assert!(!moves.is_empty());
+    }
+
+    #[test]
+    fn move_piece_without_promotion_keeps_piece() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e7 = position.echiquier.get_case(6, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let mut pawn = Pawn::new(e7, true);
+        position.set_piece(pawn);
+
+        let next_position = pawn.move_piece(&position, PieceMove { right: 0, up: 1 }, e8, None, None);
+        let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
+        assert!(matches!(piece_at_e8, Piece::Pawn(_)));
+    }
+
+    #[test]
+    fn move_piece_with_promotion_promotes_piece() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e7 = position.echiquier.get_case(6, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let mut pawn = Pawn::new(e7, true);
+        position.set_piece(pawn);
+
+        let next_position = pawn.move_piece(
+            &position,
+            PieceMove { right: 0, up: 1 },
+            e8,
+            None,
+            Some(PromotionPiece::Queen),
+        );
+        let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
+        assert!(matches!(piece_at_e8, Piece::Queen(_)));
+    }
+
+    #[test]
+    #[should_panic(expected = "Not implemented")]
+    fn move_piece_with_promotion_on_non_pawn_panics() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let a2 = position.echiquier.get_case(1, 0);
+        let mut rook = Rook::new(a1, true);
+        position.set_piece(rook);
+
+        rook.move_piece(
+            &position,
+            PieceMove { right: 0, up: 1 },
+            a2,
+            None,
+            Some(PromotionPiece::Queen),
+        );
     }
 }

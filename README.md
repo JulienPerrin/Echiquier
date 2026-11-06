@@ -32,12 +32,12 @@ A chessboard written in RUST
 - [x] Track `last_move: Option<PieceMove>` on `Piece`
 - [x] Improve `Position` display with Unicode chess symbols (white/black pieces)
 - [x] Plain console board for `cargo run`: outline vs solid glyphs and `·` for empty squares
-- [ ] Complete `Pawn` rules:
+- [x] Complete `Pawn` rules:
   - [x] 2-square initial move when `last_move.is_none()`
   - [x] Prevent moving onto an occupied square
   - [x] Diagonal capture
   - [x] En-passant capture (only immediately on the turn after an opponent's pawn moves 2 squares)
-  - [ ] Promotion on the last rank
+  - [x] Promotion on the last rank (to `Queen`, `Rook`, `Bishop`, or `Knight`)
 - [x] Implement remaining pieces:
   - [x] `Knight`
     - [x] move on any sqare that is not on its row, column or diagonal (2 squares in one direction, 1 square perpendicular)
