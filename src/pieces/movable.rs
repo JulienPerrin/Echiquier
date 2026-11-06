@@ -78,7 +78,12 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
                 }
             }
         }
+        moves.extend(self.castling_moves(position));
         moves
+    }
+
+    fn castling_moves(&self, _position: &Position) -> Vec<PieceMove> {
+        Vec::new()
     }
 
     fn allowed_captures(&self, position: &Position) -> Vec<(PieceMove, Piece)> {
@@ -104,6 +109,10 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         return (&self)
             .allowed_captures(position)
             .contains(&(piece_move, piece_taken));
+    }
+
+    fn has_never_moved(&self) -> bool {
+        self.last_move.is_none()
     }
 
     fn is_turn(&self, position: &Position) -> bool {

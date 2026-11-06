@@ -6,6 +6,7 @@ use std::marker::Copy;
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
 use crate::echiquier::piece_move::PieceMove;
+use crate::pieces::king::King;
 use crate::pieces::piece::{Piece, PieceData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -48,6 +49,19 @@ impl<'a> Position<'a> {
 
     pub fn is_case_occupied(&self, case: &Case) -> bool {
         self.get_piece(case).is_some()
+    }
+
+    pub fn is_case_attacked(&self, case: &Case, is_white: bool) -> bool {
+        let mut test_pos = *self;
+        test_pos.set_piece(King::new(*case, is_white));
+        test_pos.get_pieces::<Piece>(!is_white) 
+            .into_iter()
+            .flat_map(|p| p.candidate_captures(&test_pos))
+            .any(|(_, target)| target.case == *case)
+    }
+
+    pub fn is_case_occupied_or_attacked(&self, case: &Case, is_white: bool) -> bool {
+        self.is_case_occupied(case) || self.is_case_attacked(case, is_white)
     }
 
     pub fn get_pieces<T: TryFrom<Piece>>(&self, is_white: bool) -> Vec<T> {
@@ -242,5 +256,53 @@ mod tests {
         assert!(position.is_white_turn());
         assert!(position.is_turn(true));
         assert!(!position.is_turn(false));
+    }
+
+    #[test]
+    fn is_case_attacked_detects_attacks_for_white_and_black() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e4 = position.echiquier.get_case(3, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let a4 = position.echiquier.get_case(3, 0);
+
+        position.set_piece(Rook::new(e8, false));
+        position.set_piece(Rook::new(a4, true));
+
+        assert!(position.is_case_attacked(&e4, true));
+        assert!(position.is_case_attacked(&e4, false));
+
+        let h1 = position.echiquier.get_case(0, 7);
+        assert!(!position.is_case_attacked(&h1, true));
+        assert!(!position.is_case_attacked(&h1, false));
+    }
+
+    #[test]
+    fn is_case_occupied_or_attacked_checks_both_conditions() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e4 = position.echiquier.get_case(3, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let h1 = position.echiquier.get_case(0, 7);
+        let b2 = position.echiquier.get_case(1, 1);
+
+        // e8 has an enemy rook attacking e4 along the file
+        position.set_piece(Rook::new(e8, false));
+        // b2 has a friendly pawn (not attacked by black)
+        position.set_piece(Pawn::new(b2, true));
+
+        // 1. Occupied and not attacked: b2
+        assert!(position.is_case_occupied_or_attacked(&b2, true));
+
+        // 2. Not occupied but attacked: e4
+        assert!(position.is_case_occupied_or_attacked(&e4, true));
+
+        // 3. Occupied and attacked: place a piece on e4
+        let white_knight = Knight::new(e4, true);
+        position.set_piece(white_knight);
+        assert!(position.is_case_occupied_or_attacked(&e4, true));
+
+        // 4. Neither occupied nor attacked: h1
+        assert!(!position.is_case_occupied_or_attacked(&h1, true));
     }
 }

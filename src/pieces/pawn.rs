@@ -100,7 +100,7 @@ impl Movable for Pawn {
 
         let mut moves = vec![one_step];
 
-        if self.last_move.is_none() {
+        if self.has_never_moved() {
             let two_steps = PieceMove {
                 right: 0,
                 up: direction * 2,
