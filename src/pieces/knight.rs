@@ -131,7 +131,10 @@ mod tests {
         let next_position =
             white_knight.move_piece(&position, capture_move, c3, Some(black_pawn_c3.into()));
         assert_eq!(c3, white_knight.case);
-        assert_eq!(Some(Piece::from(white_knight)), next_position.get_piece(&c3));
+        assert_eq!(
+            Some(Piece::from(white_knight)),
+            next_position.get_piece(&c3)
+        );
         assert_eq!(None, next_position.get_piece(&b1));
     }
 }

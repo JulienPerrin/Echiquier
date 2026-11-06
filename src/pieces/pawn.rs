@@ -86,9 +86,13 @@ impl Movable for Pawn {
                 && target_piece.is_white != self.is_white
             {
                 captures.push((diagonal_move, target_piece));
-            } else if let Some(adjacent_piece) =
-                position.get_relative_piece(&self.case, PieceMove { right: right_value, up: 0 })
-                && matches!(adjacent_piece, Piece::Pawn(_))
+            } else if let Some(adjacent_piece) = position.get_relative_piece(
+                &self.case,
+                PieceMove {
+                    right: right_value,
+                    up: 0,
+                },
+            ) && matches!(adjacent_piece, Piece::Pawn(_))
                 && adjacent_piece.is_white != self.is_white
                 && position.last_moved_piece == Some(adjacent_piece)
                 && adjacent_piece.last_move
@@ -295,7 +299,10 @@ mod tests {
         let after_en_passant =
             white_pawn.move_piece(&after_d5, en_passant_move, d6, Some(black_pawn.into()));
         assert_eq!(d6, white_pawn.case);
-        assert_eq!(Some(Piece::from(white_pawn)), after_en_passant.get_piece(&d6));
+        assert_eq!(
+            Some(Piece::from(white_pawn)),
+            after_en_passant.get_piece(&d6)
+        );
         assert_eq!(None, after_en_passant.get_piece(&e5));
         assert_eq!(None, after_en_passant.get_piece(&d5));
     }
@@ -329,7 +336,10 @@ mod tests {
         let after_en_passant =
             black_pawn.move_piece(&after_e4, en_passant_move, e3, Some(white_pawn.into()));
         assert_eq!(e3, black_pawn.case);
-        assert_eq!(Some(Piece::from(black_pawn)), after_en_passant.get_piece(&e3));
+        assert_eq!(
+            Some(Piece::from(black_pawn)),
+            after_en_passant.get_piece(&e3)
+        );
         assert_eq!(None, after_en_passant.get_piece(&d4));
         assert_eq!(None, after_en_passant.get_piece(&e4));
     }

@@ -116,7 +116,10 @@ impl<'a> Game<'a> {
         Piece: From<T>,
     {
         let current = *self.current_position();
-        let target_case = current.echiquier.get_relative_case(&piece.case, piece_move).expect("target case out of bounds!");
+        let target_case = current
+            .echiquier
+            .get_relative_case(&piece.case, piece_move)
+            .expect("target case out of bounds!");
         let piece_taken = current.get_piece(&target_case).or_else(|| {
             piece
                 .allowed_captures(&current)
@@ -207,7 +210,10 @@ mod tests {
 
         let after_en_passant = *game.play_move(&mut white_pawn, PieceMove { right: -1, up: 1 });
         assert_eq!(d6, white_pawn.case);
-        assert_eq!(Some(Piece::from(white_pawn)), after_en_passant.get_piece(&d6));
+        assert_eq!(
+            Some(Piece::from(white_pawn)),
+            after_en_passant.get_piece(&d6)
+        );
         assert_eq!(None, after_en_passant.get_piece(&d5));
         assert_eq!(None, after_en_passant.get_piece(&e5));
     }

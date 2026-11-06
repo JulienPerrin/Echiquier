@@ -119,7 +119,10 @@ mod tests {
         let next_position =
             white_bishop.move_piece(&position, capture_move, e3, Some(black_pawn_e3.into()));
         assert_eq!(e3, white_bishop.case);
-        assert_eq!(Some(Piece::from(white_bishop)), next_position.get_piece(&e3));
+        assert_eq!(
+            Some(Piece::from(white_bishop)),
+            next_position.get_piece(&e3)
+        );
         assert_eq!(None, next_position.get_piece(&c1));
     }
 }
