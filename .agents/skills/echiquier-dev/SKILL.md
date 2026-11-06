@@ -22,4 +22,4 @@ Use this skill alongside the global `env-rust` skill when working on the `echiqu
 * `Position<'a>` (`src/echiquier/position.rs`) borrows `&'a Echiquier` and stores `[Option<Piece>; 64]` so positions remain lightweight and `Copy`.
 * `Position` display prints ranks `8` down to `1` from top to bottom (White at the bottom) and files `A..H` along the bottom. `Display` renders a compact, colour-free grid using each piece's own `Display` (solid = White, outline = Black) and `·` for empty squares. No terminal colours.
 * `move_piece` borrows `&Position<'a>` and returns a new `Position<'a>` snapshot so previous positions remain intact.
-* `Game<'a>` (`src/echiquier/game.rs`) stores `initial_position: Position<'a>` and `positions: Vec<Position<'a>>` to record the evolution of the game for replay and engine search.
+* `Game<'a>` (`src/game/game.rs`) stores `initial_position: Position<'a>` and `positions: Vec<Position<'a>>` to record the evolution of the game for replay and engine search.

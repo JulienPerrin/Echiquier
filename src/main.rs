@@ -1,9 +1,10 @@
 mod echiquier;
+mod game;
 mod pieces;
 
 use echiquier::case::Case;
-use echiquier::game::{Game, INITIAL_POSITION};
 use echiquier::piece_move::PieceMove;
+use game::game::{Game, INITIAL_POSITION};
 use pieces::pawn::Pawn;
 
 fn main() {
