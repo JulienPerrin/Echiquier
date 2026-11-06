@@ -31,9 +31,9 @@ A chessboard written in RUST
 * [x] Track `last_move: Option<PieceMove>` on `Piece`
 * [ ] Improve `Position` display with Unicode chess symbols (white/black pieces)
 * [ ] Complete `Pawn` rules:
-  * [ ] 2-square initial move when `last_move.is_none()`
-  * [ ] Prevent moving onto an occupied square
-  * [ ] Diagonal capture
+  * [x] 2-square initial move when `last_move.is_none()`
+  * [x] Prevent moving onto an occupied square
+  * [x] Diagonal capture
   * [ ] En-passant capture (only immediately on the turn after an opponent's pawn moves 2 squares)
   * [ ] Promotion on the last rank
 * [ ] Implement remaining pieces:
@@ -62,6 +62,7 @@ A chessboard written in RUST
   * [ ] cannot capture own pieces
 * [ ] Implement `Pin` rule (a piece cannot move if doing so exposes its own `King` to check)
 * [ ] Create starting `Position` with all 32 pieces on their initial squares
+  * [x] Declare `INITIAL_POSITION` as a `const` in `game.rs` with all `Pawn`s and `King`s
 * [x] Create `Game` struct holding the starting position and history of `Position`s for replay
   * [ ] track whose turn it is to play (White or Black)
   * [ ] support chess notation (FEN / Algebraic notation / PGN)

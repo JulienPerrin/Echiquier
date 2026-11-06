@@ -3,7 +3,9 @@ use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display};
 use std::marker::Copy;
 
+use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
+use crate::echiquier::piece_move::PieceMove;
 use crate::pieces::king::King;
 use crate::pieces::pawn::Pawn;
 use crate::pieces::piece::Piece;
@@ -16,7 +18,8 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
-    pub fn new(echiquier: &'a Echiquier) -> Position<'a> {
+    #[allow(dead_code)]
+    pub const fn new(echiquier: &'a Echiquier) -> Position<'a> {
         Position {
             echiquier,
             pieces: [None; 64],
@@ -26,6 +29,25 @@ impl<'a> Position<'a> {
     pub fn set_piece(&mut self, piece: Piece) {
         let index = (piece.case.rank * 8 + piece.case.file) as usize;
         self.pieces[index] = Some(piece);
+    }
+
+    pub fn get_piece(&self, case: &Case) -> Option<Piece> {
+        let index = (case.rank * 8 + case.file) as usize;
+        self.pieces[index]
+    }
+
+    pub fn get_relative_piece(&self, case: &Case, piece_move: PieceMove) -> Option<Piece> {
+        let target_case = self.echiquier.get_relative_case(case, piece_move)?;
+        self.get_piece(&target_case)
+    }
+
+    pub fn remove_piece(&mut self, piece: &Piece) {
+        let index = (piece.case.rank * 8 + piece.case.file) as usize;
+        self.pieces[index] = None;
+    }
+
+    pub fn is_case_occupied(&self, case: &Case) -> bool {
+        self.get_piece(case).is_some()
     }
 
     fn display_square(&self, index: usize) -> String {
@@ -69,7 +91,8 @@ mod tests {
         position.set_piece(*pawn);
 
         assert_eq!(
-            "H x x x x x x x x
+            "\
+H x x x x x x x x
 G x x x x x x x x
 F x x x x x x x x
 E x x x x x x x x

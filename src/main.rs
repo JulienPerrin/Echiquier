@@ -2,10 +2,8 @@ mod echiquier;
 mod pieces;
 
 use echiquier::case::Case;
-use echiquier::echiquier::Echiquier;
-use echiquier::game::Game;
+use echiquier::game::{Game, INITIAL_POSITION};
 use echiquier::piece_move::PieceMove;
-use echiquier::position::Position;
 use pieces::pawn::Pawn;
 
 fn main() {
@@ -13,16 +11,16 @@ fn main() {
 }
 
 fn build_chessboard() {
-    let echiquier = Echiquier::new();
-    let mut initial_position = Position::new(&echiquier);
-    let e2: Case = initial_position.echiquier.get_case(1, 4);
-    let mut pawn = Pawn::new(e2, true);
-    initial_position.set_piece(*pawn);
+    let mut game = Game::default_game();
+    let e2: Case = INITIAL_POSITION.echiquier.get_case(1, 4);
+    let mut white_pawn = Pawn::new(e2, true);
+    game.play_move(&mut white_pawn, PieceMove { right: 0, up: 2 });
 
-    let mut game = Game::new(initial_position);
+    let d7: Case = INITIAL_POSITION.echiquier.get_case(6, 3);
+    let mut black_pawn = Pawn::new(d7, false);
+    game.play_move(&mut black_pawn, PieceMove { right: 0, up: -2 });
 
-    let one_up = PieceMove { right: 0, up: 1 };
-    game.play_move(&mut pawn, one_up);
+    game.play_move(&mut white_pawn, PieceMove { right: -1, up: 1 });
 
     println!("Before:\n{}", game.initial_position);
     println!("\nAfter:\n{}", game.current_position());
@@ -35,6 +33,5 @@ mod tests {
     #[test]
     fn run_main() {
         main();
-        //assert_eq!(1, 2, "intentional test failure");
     }
 }

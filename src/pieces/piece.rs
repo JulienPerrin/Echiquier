@@ -11,7 +11,7 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn new(case: Case, kind: PieceKind, is_white: bool) -> Self {
+    pub const fn new(case: Case, kind: PieceKind, is_white: bool) -> Self {
         Piece {
             case,
             kind,

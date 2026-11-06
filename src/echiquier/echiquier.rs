@@ -11,7 +11,7 @@ pub struct Echiquier {
 }
 
 impl Echiquier {
-    pub fn new() -> Echiquier {
+    pub const fn new() -> Echiquier {
         return Echiquier {
             cases: [
                 Case { rank: 0, file: 0 },
@@ -86,23 +86,18 @@ impl Echiquier {
         return rank >= 0 && file >= 0 && rank < 8 && file < 8;
     }
 
-    pub fn exists_relative_case(&self, case: &Case, piece_move: PieceMove) -> bool {
-        return self.exists_case(
-            (case.rank as i8) + piece_move.up,
-            (case.file as i8) + piece_move.right,
-        );
-    }
-
     pub fn get_case(&self, rank: u8, file: u8) -> Case {
         let index: u8 = rank * 8 + file;
         return self.cases[index as usize];
     }
 
-    pub fn get_relative_case(&self, case: &Case, piece_move: PieceMove) -> Case {
-        return self.get_case(
-            ((case.rank as i8) + piece_move.up) as u8,
-            ((case.file as i8) + piece_move.right) as u8,
-        );
+    pub fn get_relative_case(&self, case: &Case, piece_move: PieceMove) -> Option<Case> {
+        let rank = (case.rank as i8) + piece_move.up;
+        let file = (case.file as i8) + piece_move.right;
+        if !self.exists_case(rank, file) {
+            return None;
+        }
+        Some(self.get_case(rank as u8, file as u8))
     }
 }
 
@@ -110,7 +105,8 @@ impl Display for Echiquier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "    1      2      3      4      5      6      7      8
+            "\
+    1      2      3      4      5      6      7      8
 A : {} {} {} {} {} {} {} {}
 B : {} {} {} {} {} {} {} {}
 C : {} {} {} {} {} {} {} {}
@@ -227,12 +223,10 @@ mod tests {
         assert!(echiquier.exists_case(0, 0));
         let a1: Case = echiquier.get_case(0, 0);
         let no_deplacement: PieceMove = PieceMove { right: 0, up: 0 };
-        assert!(echiquier.exists_relative_case(&a1, no_deplacement));
+        assert_eq!(Some(a1), echiquier.get_relative_case(&a1, no_deplacement));
         let one_right_two_up: PieceMove = PieceMove { right: 1, up: 2 };
-        assert!(echiquier.exists_relative_case(&a1, one_right_two_up));
-        let b3: Case = echiquier.get_relative_case(&a1, one_right_two_up);
-        assert_eq!(2, b3.rank);
-        assert_eq!(1, b3.file);
+        let b3: Case = echiquier.get_case(2, 1);
+        assert_eq!(Some(b3), echiquier.get_relative_case(&a1, one_right_two_up));
     }
 
     #[test]
@@ -240,17 +234,18 @@ mod tests {
         let echiquier: Echiquier = Echiquier::new();
         assert!(echiquier.exists_case(0, 0));
         let a1: Case = echiquier.get_case(0, 0);
-        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: -1, up: 0 }));
-        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 0, up: -1 }));
-        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 8, up: 0 }));
-        assert!(!echiquier.exists_relative_case(&a1, PieceMove { right: 0, up: 8 }));
+        assert!(echiquier.get_relative_case(&a1, PieceMove { right: -1, up: 0 }).is_none());
+        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 0, up: -1 }).is_none());
+        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 8, up: 0 }).is_none());
+        assert!(echiquier.get_relative_case(&a1, PieceMove { right: 0, up: 8 }).is_none());
     }
 
     #[test]
     fn print() {
         let echiquier: Echiquier = Echiquier::new();
         assert_eq!(
-            "    1      2      3      4      5      6      7      8
+            "\
+    1      2      3      4      5      6      7      8
 A : (0, 0) (0, 1) (0, 2) (0, 3) (0, 4) (0, 5) (0, 6) (0, 7)
 B : (1, 0) (1, 1) (1, 2) (1, 3) (1, 4) (1, 5) (1, 6) (1, 7)
 C : (2, 0) (2, 1) (2, 2) (2, 3) (2, 4) (2, 5) (2, 6) (2, 7)
