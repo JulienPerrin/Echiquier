@@ -29,27 +29,27 @@ A chessboard written in RUST
 * [x] Create `Position` with `[Option<Piece>; 64]` and console `Display`
 * [x] Implement `Pawn` 1-square forward movement (up for white, down for black)
 * [x] Track `last_move: Option<PieceMove>` on `Piece`
-* [ ] Improve `Position` display with Unicode chess symbols (white/black pieces)
+* [x] Improve `Position` display with Unicode chess symbols (white/black pieces)
 * [ ] Complete `Pawn` rules:
   * [x] 2-square initial move when `last_move.is_none()`
   * [x] Prevent moving onto an occupied square
   * [x] Diagonal capture
   * [ ] En-passant capture (only immediately on the turn after an opponent's pawn moves 2 squares)
   * [ ] Promotion on the last rank
-* [ ] Implement remaining pieces:
-  * [ ] `Knight`
-    * [ ] move on any sqare that is not on its row, column or diagonal (2 squares in one direction, 1 square perpendicular)
-    * [ ] can jump over other pieces
-  * [ ] `Bishop`
-    * [ ] move diagonally any number of squares
-    * [ ] cannot jump over pieces
-  * [ ] `Rook`
-    * [ ] move horizontally or vertically any number of squares
-    * [ ] cannot jump over pieces
-    * [ ] track movement (`last_move.is_none()`) for castling
-  * [ ] `Queen`
-    * [ ] move horizontally, vertically, or diagonally any number of squares
-    * [ ] cannot jump over pieces
+* [x] Implement remaining pieces:
+  * [x] `Knight`
+    * [x] move on any sqare that is not on its row, column or diagonal (2 squares in one direction, 1 square perpendicular)
+    * [x] can jump over other pieces
+  * [x] `Bishop`
+    * [x] move diagonally any number of squares
+    * [x] cannot jump over pieces
+  * [x] `Rook`
+    * [x] move horizontally or vertically any number of squares
+    * [x] cannot jump over pieces
+    * [x] track movement (`last_move.is_none()`) for castling
+  * [x] `Queen`
+    * [x] move horizontally, vertically, or diagonally any number of squares
+    * [x] cannot jump over pieces
   * [ ] `King`
     * [x] move one square any direction
     * [ ] cannot move onto an attacked square
@@ -61,7 +61,7 @@ A chessboard written in RUST
   * [ ] cannot jump over pieces except `Knight`
   * [ ] cannot capture own pieces
 * [ ] Implement `Pin` rule (a piece cannot move if doing so exposes its own `King` to check)
-* [ ] Create starting `Position` with all 32 pieces on their initial squares
+* [x] Create starting `Position` with all 32 pieces on their initial squares
   * [x] Declare `INITIAL_POSITION` as a `const` in `game.rs` with all `Pawn`s and `King`s
 * [x] Create `Game` struct holding the starting position and history of `Position`s for replay
   * [ ] track whose turn it is to play (White or Black)

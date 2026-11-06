@@ -10,6 +10,30 @@ use crate::pieces::piece_kind::PieceKind;
 pub trait Movable: DerefMut<Target = Piece> + Display {
     fn candidate_moves(&self, position: &Position) -> Vec<PieceMove>;
 
+    fn sliding_candidate_moves(&self, position: &Position, directions: &[(i8, i8)]) -> Vec<PieceMove> {
+        let mut moves = Vec::new();
+
+        for &(right_step, up_step) in directions {
+            let mut distance = 1;
+            let mut blocked = false;
+            while !blocked {
+                let piece_move = PieceMove {
+                    right: right_step * distance,
+                    up: up_step * distance,
+                };
+                if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move) {
+                    moves.push(piece_move);
+                    blocked = position.is_case_occupied(&target_case);
+                    distance += 1;
+                } else {
+                    blocked = true;
+                }
+            }
+        }
+
+        moves
+    }
+
     fn candidate_captures(&self, position: &Position) -> Vec<(PieceMove, Piece)> {
         let mut captures = Vec::new();
 
@@ -148,5 +172,22 @@ mod tests {
             white_pawn.allowed_captures(&position)
         );
         assert!(!white_pawn.is_capture_allowed(&position, king_capture_move, *black_king));
+    }
+
+    #[test]
+    fn sliding_candidate_moves_stops_at_boundary_and_occupied_case() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let king = King::new(a1, true);
+        position.set_piece(*king);
+
+        let a2 = position.echiquier.get_case(1, 0);
+        position.set_piece(*Pawn::new(a2, false));
+
+        // Going left (-1, 0) immediately hits boundary (line 23 break)
+        // Going up (0, 1) hits occupied a2 (line 27 break)
+        let moves = king.sliding_candidate_moves(&position, &[(-1, 0), (0, 1)]);
+        assert_eq!(vec![PieceMove { right: 0, up: 1 }], moves);
     }
 }

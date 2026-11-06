@@ -6,10 +6,14 @@ use std::marker::Copy;
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
 use crate::echiquier::piece_move::PieceMove;
+use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
+use crate::pieces::knight::Knight;
 use crate::pieces::pawn::Pawn;
 use crate::pieces::piece::Piece;
 use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::queen::Queen;
+use crate::pieces::rook::Rook;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Position<'a> {
@@ -54,8 +58,11 @@ impl<'a> Position<'a> {
         match self.pieces[index] {
             Some(piece) => match piece.kind {
                 PieceKind::PAWN => Pawn { piece }.to_string(),
+                PieceKind::KNIGHT => Knight { piece }.to_string(),
+                PieceKind::BISHOP => Bishop { piece }.to_string(),
+                PieceKind::ROOK => Rook { piece }.to_string(),
+                PieceKind::QUEEN => Queen { piece }.to_string(),
                 PieceKind::KING => King { piece }.to_string(),
-                _ => todo!(),
             },
             None => String::from("x"),
         }
@@ -64,16 +71,15 @@ impl<'a> Position<'a> {
 
 impl<'a> Display for Position<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-        for (rank, row_label) in rows.iter().enumerate().rev() {
-            write!(f, "{}", row_label)?;
+        for rank in (0..8).rev() {
+            write!(f, "{}", rank + 1)?;
             for file in 0..8 {
                 let index = rank * 8 + file;
                 write!(f, " {}", self.display_square(index))?;
             }
             writeln!(f)?;
         }
-        write!(f, "  1 2 3 4 5 6 7 8")
+        write!(f, "  A B C D E F G H")
     }
 }
 
@@ -92,15 +98,48 @@ mod tests {
 
         assert_eq!(
             "\
-H x x x x x x x x
-G x x x x x x x x
-F x x x x x x x x
-E x x x x x x x x
-D x x x x x x x x
-C x x x x x x x x
-B x x x x P x x x
-A x x x x x x x x
-  1 2 3 4 5 6 7 8",
+8 x x x x x x x x
+7 x x x x x x x x
+6 x x x x x x x x
+5 x x x x x x x x
+4 x x x x x x x x
+3 x x x x x x x x
+2 x x x x ♟ x x x
+1 x x x x x x x x
+  A B C D E F G H",
+            position.to_string()
+        );
+    }
+
+    #[test]
+    fn print_position_with_all_piece_types() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let b1 = position.echiquier.get_case(0, 1);
+        let c1 = position.echiquier.get_case(0, 2);
+        let d1 = position.echiquier.get_case(0, 3);
+        let e1 = position.echiquier.get_case(0, 4);
+        let f2 = position.echiquier.get_case(1, 5);
+
+        position.set_piece(*Rook::new(a1, true));
+        position.set_piece(*Knight::new(b1, true));
+        position.set_piece(*Bishop::new(c1, true));
+        position.set_piece(*Queen::new(d1, true));
+        position.set_piece(*King::new(e1, true));
+        position.set_piece(*Pawn::new(f2, true));
+
+        assert_eq!(
+            "\
+8 x x x x x x x x
+7 x x x x x x x x
+6 x x x x x x x x
+5 x x x x x x x x
+4 x x x x x x x x
+3 x x x x x x x x
+2 x x x x x ♟ x x
+1 ♜ ♞ ♝ ♛ ♚ x x x
+  A B C D E F G H",
             position.to_string()
         );
     }

@@ -37,7 +37,7 @@ impl DerefMut for Pawn {
 
 impl Display for Pawn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "P")
+        write!(f, "{}", if self.is_white { '♟' } else { '♙' })
     }
 }
 
@@ -213,5 +213,14 @@ mod tests {
         let e1 = position.echiquier.get_case(0, 4);
         let black_pawn = Pawn::new(e1, false);
         assert!(black_pawn.allowed_moves(&position).is_empty());
+    }
+
+    #[test]
+    fn pawn_display_unicode_symbols() {
+        let echiquier = Echiquier::new();
+        let e2 = echiquier.get_case(1, 4);
+        let e7 = echiquier.get_case(6, 4);
+        assert_eq!("♟", Pawn::new(e2, true).to_string());
+        assert_eq!("♙", Pawn::new(e7, false).to_string());
     }
 }

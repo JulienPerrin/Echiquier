@@ -3,8 +3,13 @@
 pub enum PieceKind {
     PAWN = 0,
     KNIGHT = 1,
-    BISSHOP = 2,
+    BISHOP = 2,
     ROOK = 3,
     QUEEN = 4,
-    KING = 5
+    KING = 5,
+}
+
+impl PieceKind {
+    #[allow(dead_code)]
+    pub const BISSHOP: PieceKind = PieceKind::BISHOP;
 }

@@ -14,17 +14,6 @@ pub struct King {
 }
 
 impl King {
-    const DIRECTIONS: [PieceMove; 8] = [
-        PieceMove { right: -1, up: -1 },
-        PieceMove { right: 0, up: -1 },
-        PieceMove { right: 1, up: -1 },
-        PieceMove { right: -1, up: 0 },
-        PieceMove { right: 1, up: 0 },
-        PieceMove { right: -1, up: 1 },
-        PieceMove { right: 0, up: 1 },
-        PieceMove { right: 1, up: 1 },
-    ];
-
     pub const fn new(case: Case, is_white: bool) -> Self {
         King {
             piece: Piece::new(case, PieceKind::KING, is_white),
@@ -48,13 +37,22 @@ impl DerefMut for King {
 
 impl Display for King {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "K")
+        write!(f, "{}", if self.is_white { '♚' } else { '♔' })
     }
 }
 
 impl Movable for King {
     fn candidate_moves(&self, _position: &Position) -> Vec<PieceMove> {
-        Self::DIRECTIONS.to_vec()
+        vec![
+            PieceMove { right: -1, up: -1 },
+            PieceMove { right: 0, up: -1 },
+            PieceMove { right: 1, up: -1 },
+            PieceMove { right: -1, up: 0 },
+            PieceMove { right: 1, up: 0 },
+            PieceMove { right: -1, up: 1 },
+            PieceMove { right: 0, up: 1 },
+            PieceMove { right: 1, up: 1 },
+        ]
     }
 }
 
@@ -80,7 +78,9 @@ mod tests {
         let next_position = king.move_piece(&position, one_up, e5, None);
         assert_eq!(e5, king.case);
         assert_eq!(Some(*king), next_position.pieces[(e5.rank * 8 + e5.file) as usize]);
-        assert_eq!("K", king.to_string());
+        assert_eq!("♚", king.to_string());
+        let black_king = King::new(e5, false);
+        assert_eq!("♔", black_king.to_string());
     }
 
     #[test]

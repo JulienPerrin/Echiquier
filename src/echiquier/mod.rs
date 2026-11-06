@@ -1,5 +1,6 @@
 pub mod case;
-pub mod piece_move;
+pub mod direction;
 pub mod echiquier;
-pub mod position;
 pub mod game;
+pub mod piece_move;
+pub mod position;
