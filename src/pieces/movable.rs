@@ -25,8 +25,7 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
                     right: right_step * distance,
                     up: up_step * distance,
                 };
-                if let Some(target_case) =
-                    position.echiquier.get_relative_case(&self.case, piece_move)
+                if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move)
                 {
                     moves.push(piece_move);
                     blocked = position.is_case_occupied(&target_case);
@@ -70,10 +69,7 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
         let mut captures = Vec::new();
         for (piece_move, piece_taken) in self.candidate_captures(position) {
             if piece_taken.kind != PieceKind::KING
-                && position
-                    .echiquier
-                    .get_relative_case(&self.case, piece_move)
-                    .is_some()
+                && position.echiquier.get_relative_case(&self.case, piece_move).is_some()
             {
                 captures.push((piece_move, piece_taken));
             }
@@ -121,6 +117,7 @@ pub trait Movable: DerefMut<Target = Piece> + Display {
         self.case = case;
         self.last_move = Some(piece_move);
         next_position.set_piece(**self);
+        next_position.last_moved_piece = Some(**self);
         next_position
     }
 }

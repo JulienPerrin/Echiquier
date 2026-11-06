@@ -35,7 +35,7 @@ A chessboard written in RUST
   * [x] 2-square initial move when `last_move.is_none()`
   * [x] Prevent moving onto an occupied square
   * [x] Diagonal capture
-  * [ ] En-passant capture (only immediately on the turn after an opponent's pawn moves 2 squares)
+  * [x] En-passant capture (only immediately on the turn after an opponent's pawn moves 2 squares)
   * [ ] Promotion on the last rank
 * [x] Implement remaining pieces:
   * [x] `Knight`

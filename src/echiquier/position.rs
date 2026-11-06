@@ -19,6 +19,7 @@ use crate::pieces::rook::Rook;
 pub struct Position<'a> {
     pub echiquier: &'a Echiquier,
     pub pieces: [Option<Piece>; 64],
+    pub last_moved_piece: Option<Piece>,
 }
 
 impl<'a> Position<'a> {
@@ -27,6 +28,7 @@ impl<'a> Position<'a> {
         Position {
             echiquier,
             pieces: [None; 64],
+            last_moved_piece: None,
         }
     }
 
@@ -58,25 +60,7 @@ impl<'a> Position<'a> {
 const EMPTY_SQUARE_SYMBOL: char = '·';
 const FILES: [&str; 8] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-/// ANSI escape codes for black pieces: black foreground on a light grey background,
-/// so they stay visible on dark terminals.
-const BLACK_PIECE_STYLE: &str = "\x1b[30;47m";
-const RESET_STYLE: &str = "\x1b[0m";
-
-/// Both sides share the solid glyph (the white piece's `Display`); black pieces are colourised black.
 fn piece_symbol(piece: Piece) -> String {
-    if piece.is_white {
-        glyph(piece)
-    } else {
-        let glyph = glyph(Piece {
-            is_white: true,
-            ..piece
-        });
-        format!("{BLACK_PIECE_STYLE}{glyph}{RESET_STYLE}")
-    }
-}
-
-fn glyph(piece: Piece) -> String {
     match piece.kind {
         PieceKind::PAWN => Pawn { piece }.to_string(),
         PieceKind::KNIGHT => Knight { piece }.to_string(),
@@ -87,17 +71,17 @@ fn glyph(piece: Piece) -> String {
     }
 }
 
-/// Board with solid glyphs for both sides (black pieces colourised black on light grey)
-/// and a visible dot for empty squares.
 impl<'a> Display for Position<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for rank in (0..8).rev() {
-            let squares: Vec<String> = (0..8)
-                .map(|file| match self.pieces[rank * 8 + file] {
+            let mut squares = Vec::new();
+            for file in 0..8 {
+                let square = match self.pieces[rank * 8 + file] {
                     Some(piece) => piece_symbol(piece),
                     None => EMPTY_SQUARE_SYMBOL.to_string(),
-                })
-                .collect();
+                };
+                squares.push(square);
+            }
             writeln!(f, "{} {}", rank + 1, squares.join(" "))?;
         }
         write!(f, "  {}", FILES.join(" "))

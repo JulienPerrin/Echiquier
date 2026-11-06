@@ -82,6 +82,7 @@ pub const INITIAL_POSITION: Position<'static> = Position {
         Some(Knight::new(Case { rank: 7, file: 6 }, false).piece),
         Some(Rook::new(Case { rank: 7, file: 7 }, false).piece),
     ],
+    last_moved_piece: None,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -110,11 +111,14 @@ impl<'a> Game<'a> {
 
     pub fn play_move<T: Movable>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a> {
         let current = *self.current_position();
-        let target_case = current
-            .echiquier
-            .get_relative_case(&piece.case, piece_move)
-            .expect("target case out of bounds!");
-        let piece_taken = current.get_piece(&target_case);
+        let target_case = current.echiquier.get_relative_case(&piece.case, piece_move).expect("target case out of bounds!");
+        let piece_taken = current.get_piece(&target_case).or_else(|| {
+            piece
+                .allowed_captures(&current)
+                .into_iter()
+                .find(|&(m, _)| m == piece_move)
+                .map(|(_, taken)| taken)
+        });
         let next_position = piece.move_piece(&current, piece_move, target_case, piece_taken);
         self.positions.push(next_position);
         self.current_position()
@@ -173,6 +177,34 @@ mod tests {
     fn game_display_matches_current_position() {
         let game = Game::default_game();
         assert_eq!(game.current_position().to_string(), game.to_string());
+    }
+
+    #[test]
+    fn game_play_move_handles_en_passant_capture() {
+        let mut game = Game::default_game();
+        let e2 = INITIAL_POSITION.echiquier.get_case(1, 4);
+        let e5 = INITIAL_POSITION.echiquier.get_case(4, 4);
+        let d7 = INITIAL_POSITION.echiquier.get_case(6, 3);
+        let d5 = INITIAL_POSITION.echiquier.get_case(4, 3);
+        let d6 = INITIAL_POSITION.echiquier.get_case(5, 3);
+        let a7 = INITIAL_POSITION.echiquier.get_case(6, 0);
+
+        let mut white_pawn = Pawn::new(e2, true);
+        let mut black_pawn_a = Pawn::new(a7, false);
+        let mut black_pawn_d = Pawn::new(d7, false);
+
+        game.play_move(&mut white_pawn, PieceMove { right: 0, up: 2 });
+        game.play_move(&mut black_pawn_a, PieceMove { right: 0, up: -1 });
+        game.play_move(&mut white_pawn, PieceMove { right: 0, up: 1 });
+        game.play_move(&mut black_pawn_d, PieceMove { right: 0, up: -2 });
+        assert_eq!(e5, white_pawn.case);
+        assert_eq!(d5, black_pawn_d.case);
+
+        let after_en_passant = *game.play_move(&mut white_pawn, PieceMove { right: -1, up: 1 });
+        assert_eq!(d6, white_pawn.case);
+        assert_eq!(Some(*white_pawn), after_en_passant.get_piece(&d6));
+        assert_eq!(None, after_en_passant.get_piece(&d5));
+        assert_eq!(None, after_en_passant.get_piece(&e5));
     }
 
     #[test]
