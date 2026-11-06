@@ -148,6 +148,8 @@ mod tests {
         let e7 = position.echiquier.get_case(6, 4);
         let mut pawn = Pawn::new(e7, false);
         position.set_piece(pawn);
+        let a2 = position.echiquier.get_case(1, 0);
+        position.last_moved_piece = Some(Piece::from(Pawn::new(a2, true)));
 
         let one_down = PieceMove { right: 0, up: -1 };
         let two_down = PieceMove { right: 0, up: -2 };
@@ -224,8 +226,11 @@ mod tests {
             vec![(black_capture_move, taken_white_pawn)],
             black_pawn_for_capture.allowed_captures(&position)
         );
+        let mut black_turn_position = position;
+        let white_pawn_piece = Piece::from(Pawn::new(e4, true));
+        black_turn_position.last_moved_piece = Some(white_pawn_piece);
         let after_black_capture = black_pawn_for_capture.move_piece(
-            &position,
+            &black_turn_position,
             black_capture_move,
             e4,
             Some(taken_white_pawn),
@@ -269,16 +274,17 @@ mod tests {
         let d7 = echiquier.get_case(6, 3);
         let d5 = echiquier.get_case(4, 3);
         let d6 = echiquier.get_case(5, 3);
-        let a7 = echiquier.get_case(6, 0);
-        let a6 = echiquier.get_case(5, 0);
+        let h2 = echiquier.get_case(1, 7);
+        let h3 = echiquier.get_case(2, 7);
 
         let mut white_pawn = Pawn::new(e5, true);
         white_pawn.last_move = Some(PieceMove { right: 0, up: 1 });
         let mut black_pawn = Pawn::new(d7, false);
-        let mut other_black_pawn = Pawn::new(a7, false);
+        let mut other_white_pawn = Pawn::new(h2, true);
         position.set_piece(white_pawn);
         position.set_piece(black_pawn);
-        position.set_piece(other_black_pawn);
+        position.set_piece(other_white_pawn);
+        position.last_moved_piece = Some(Piece::from(white_pawn));
 
         // Black pawn moves 2 squares from d7 to d5
         let after_d5 = black_pawn.move_piece(&position, PieceMove { right: 0, up: -2 }, d5, None);
@@ -292,7 +298,7 @@ mod tests {
 
         // If another move happens in between, en-passant is no longer allowed
         let after_other_move =
-            other_black_pawn.move_piece(&after_d5, PieceMove { right: 0, up: -1 }, a6, None);
+            other_white_pawn.move_piece(&after_d5, PieceMove { right: 0, up: 1 }, h3, None);
         assert!(white_pawn.allowed_captures(&after_other_move).is_empty());
 
         // Execute en-passant capture on `after_d5`: white pawn moves to d6 and black pawn on d5 is removed

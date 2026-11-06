@@ -5,7 +5,7 @@ use super::movable::Movable;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
-use crate::pieces::piece::PieceData;
+use crate::pieces::piece::{Piece, PieceData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct King {
@@ -19,13 +19,33 @@ impl King {
         }
     }
 
-    #[allow(dead_code)]
     pub fn is_in_check(&self, position: &Position) -> bool {
+        if !self.is_turn(position) {
+            panic!("a king can not be in check it is not his turn");
+        }
         position
-            .get_pieces(!self.is_white, None)
+            .get_pieces::<Piece>(!self.is_white)
             .into_iter()
             .flat_map(|p| p.candidate_captures(position))
             .any(|(_, target)| target.case == self.case)
+    }
+
+    pub fn has_moves(&self, position: &Position) -> bool {
+        position
+            .get_pieces::<Piece>(self.is_white)
+            .into_iter()
+            .any(|p| !p.allowed_moves(position).is_empty())
+    }
+
+    pub fn is_in_checkmate(&self, position: &Position) -> bool {
+        if !self.is_turn(position) {
+            panic!("a king can not be in checkmate it is not his turn");
+        }
+        self.is_in_check(position) && !self.has_moves(position)
+    }
+
+    pub fn is_in_stalemate(&self, position: &Position) -> bool {
+        self.is_turn(position) && !self.is_in_check(position) && !self.has_moves(position)
     }
 }
 
@@ -189,6 +209,7 @@ mod tests {
         let white_pawn_f7 = Pawn::new(f7, true);
         position.set_piece(black_king_e8);
         position.set_piece(white_pawn_f7);
+        position.last_moved_piece = Some(Piece::from(white_pawn_f7));
         assert!(black_king_e8.is_in_check(&position));
     }
 
@@ -233,5 +254,174 @@ mod tests {
         position4.set_piece(white_king);
         position4.set_piece(friendly_rook);
         assert!(!white_king.is_in_check(&position4));
+    }
+
+    #[test]
+    fn king_is_in_checkmate_in_back_rank_mate() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let g1 = position.echiquier.get_case(0, 6);
+        let f2 = position.echiquier.get_case(1, 5);
+        let g2 = position.echiquier.get_case(1, 6);
+        let h2 = position.echiquier.get_case(1, 7);
+        let e1 = position.echiquier.get_case(0, 4);
+
+        let white_king = King::new(g1, true);
+        let black_rook = Rook::new(e1, false);
+        position.set_piece(white_king);
+        position.set_piece(Pawn::new(f2, true));
+        position.set_piece(Pawn::new(g2, true));
+        position.set_piece(Pawn::new(h2, true));
+        position.set_piece(black_rook);
+
+        assert!(white_king.is_in_check(&position));
+        assert!(!white_king.has_moves(&position));
+        assert!(white_king.is_in_checkmate(&position));
+        assert!(!white_king.is_in_stalemate(&position));
+    }
+
+    #[test]
+    fn king_is_in_stalemate_in_corner() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a8 = position.echiquier.get_case(7, 0);
+        let a6 = position.echiquier.get_case(5, 0);
+        let c7 = position.echiquier.get_case(6, 2);
+
+        let black_king = King::new(a8, false);
+        let white_king = King::new(a6, true);
+        let white_queen = Queen::new(c7, true);
+        position.set_piece(black_king);
+        position.set_piece(white_king);
+        position.set_piece(white_queen);
+
+        // 1. White just moved -> Black's turn: stalemate
+        position.last_moved_piece = Some(Piece::from(white_queen));
+        assert!(black_king.is_turn(&position));
+        assert!(!black_king.is_in_check(&position));
+        assert!(!black_king.has_moves(&position));
+        assert!(black_king.is_in_stalemate(&position));
+        assert!(!black_king.is_in_checkmate(&position));
+
+        // 2. Black just moved -> White's turn: not stalemate for Black
+        position.last_moved_piece = Some(Piece::from(black_king));
+        assert!(!black_king.is_turn(&position));
+        assert!(!black_king.is_in_stalemate(&position));
+    }
+
+    #[test]
+    fn white_king_is_in_stalemate_when_white_turn() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let a3 = position.echiquier.get_case(2, 0);
+        let c2 = position.echiquier.get_case(1, 2);
+
+        let white_king = King::new(a1, true);
+        let black_king = King::new(a3, false);
+        let black_queen = Queen::new(c2, false);
+        position.set_piece(white_king);
+        position.set_piece(black_king);
+        position.set_piece(black_queen);
+
+        // 1. Black moved last -> White's turn: stalemate
+        position.last_moved_piece = Some(Piece::from(black_queen));
+        assert!(white_king.is_turn(&position));
+        assert!(!white_king.is_in_check(&position));
+        assert!(!white_king.has_moves(&position));
+        assert!(white_king.is_in_stalemate(&position));
+
+        // 2. White moved last -> Black's turn: not stalemate for White
+        position.last_moved_piece = Some(Piece::from(white_king));
+        assert!(!white_king.is_turn(&position));
+        assert!(!white_king.is_in_stalemate(&position));
+
+        // 3. Initial position with no moves made yet -> White's turn by default
+        position.last_moved_piece = None;
+        assert!(white_king.is_turn(&position));
+        assert!(white_king.is_in_stalemate(&position));
+    }
+
+    #[test]
+    fn king_not_in_checkmate_or_stalemate_when_moves_available() {
+        let echiquier = Echiquier::new();
+
+        // 1. In check, but king can escape
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let white_king = King::new(e1, true);
+        let black_rook = Rook::new(e8, false);
+        position.set_piece(white_king);
+        position.set_piece(black_rook);
+        assert!(white_king.is_in_check(&position));
+        assert!(white_king.has_moves(&position));
+        assert!(!white_king.is_in_checkmate(&position));
+        assert!(!white_king.is_in_stalemate(&position));
+
+        // 2. In check, but friendly piece can block
+        let mut position2 = Position::new(&echiquier);
+        let b4 = position2.echiquier.get_case(3, 1);
+        let bishop = Bishop::new(b4, true);
+        position2.set_piece(white_king);
+        position2.set_piece(black_rook);
+        position2.set_piece(bishop);
+        assert!(white_king.is_in_check(&position2));
+        assert!(white_king.has_moves(&position2));
+        assert!(!white_king.is_in_checkmate(&position2));
+        assert!(!white_king.is_in_stalemate(&position2));
+
+        // 3. Not in check and has moves
+        let mut position3 = Position::new(&echiquier);
+        position3.set_piece(white_king);
+        assert!(!white_king.is_in_check(&position3));
+        assert!(white_king.has_moves(&position3));
+        assert!(!white_king.is_in_checkmate(&position3));
+        assert!(!white_king.is_in_stalemate(&position3));
+
+        // 4. King has no moves, but friendly pawn can move
+        let mut position4 = Position::new(&echiquier);
+        let a8 = position4.echiquier.get_case(7, 0);
+        let a6 = position4.echiquier.get_case(5, 0);
+        let c7 = position4.echiquier.get_case(6, 2);
+        let h7 = position4.echiquier.get_case(6, 7);
+        let black_king = King::new(a8, false);
+        let black_pawn = Pawn::new(h7, false);
+        let white_queen = Queen::new(c7, true);
+        position4.set_piece(black_king);
+        position4.set_piece(King::new(a6, true));
+        position4.set_piece(white_queen);
+        position4.set_piece(black_pawn);
+        position4.last_moved_piece = Some(Piece::from(white_queen));
+        assert!(!black_king.is_in_check(&position4));
+        assert!(black_king.has_moves(&position4));
+        assert!(!black_king.is_in_stalemate(&position4));
+        assert!(!black_king.is_in_checkmate(&position4));
+    }
+
+    #[test]
+    #[should_panic(expected = "a king can not be in check it is not his turn")]
+    fn is_in_check_panics_if_not_his_turn() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let white_king = King::new(e1, true);
+        position.set_piece(white_king);
+        // White moved last, so it is Black's turn
+        position.last_moved_piece = Some(Piece::from(white_king));
+        white_king.is_in_check(&position);
+    }
+
+    #[test]
+    #[should_panic(expected = "a king can not be in checkmate it is not his turn")]
+    fn is_in_checkmate_panics_if_not_his_turn() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let white_king = King::new(e1, true);
+        position.set_piece(white_king);
+        // White moved last, so it is Black's turn
+        position.last_moved_piece = Some(Piece::from(white_king));
+        white_king.is_in_checkmate(&position);
     }
 }

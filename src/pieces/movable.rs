@@ -4,6 +4,7 @@ use std::ops::DerefMut;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
+use crate::pieces::king::King;
 use crate::pieces::piece::{Piece, PieceData};
 
 pub trait Movable: DerefMut<Target = PieceData> + Display {
@@ -15,6 +16,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         directions: &[(i8, i8)],
     ) -> Vec<PieceMove> {
         let mut moves = Vec::new();
+        let echiquier = position.echiquier;
 
         for &(right_step, up_step) in directions {
             let mut distance = 1;
@@ -24,9 +26,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
                     right: right_step * distance,
                     up: up_step * distance,
                 };
-                if let Some(target_case) =
-                    position.echiquier.get_relative_case(&self.case, piece_move)
-                {
+                if let Some(target_case) = echiquier.get_relative_case(&self.case, piece_move) {
                     moves.push(piece_move);
                     blocked = position.is_case_occupied(&target_case);
                     distance += 1;
@@ -59,7 +59,21 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
             if let Some(target_case) = position.echiquier.get_relative_case(&self.case, piece_move)
                 && !position.is_case_occupied(&target_case)
             {
-                moves.push(piece_move);
+                let leaves_king_in_check = match position.get_piece(&self.case) {
+                    Some(piece) => {
+                        let mut next_position = *position;
+                        next_position.remove_piece(self);
+                        next_position.set_piece(piece.with_case(target_case));
+                        next_position
+                            .get_pieces::<King>(self.is_white)
+                            .into_iter()
+                            .any(|king| king.is_in_check(&next_position))
+                    }
+                    None => false,
+                };
+                if !leaves_king_in_check {
+                    moves.push(piece_move);
+                }
             }
         }
         moves
@@ -68,12 +82,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
     fn allowed_captures(&self, position: &Position) -> Vec<(PieceMove, Piece)> {
         let mut captures = Vec::new();
         for (piece_move, piece_taken) in self.candidate_captures(position) {
-            if !matches!(piece_taken, Piece::King(_))
-                && position
-                    .echiquier
-                    .get_relative_case(&self.case, piece_move)
-                    .is_some()
-            {
+            if !matches!(piece_taken, Piece::King(_)) {
                 captures.push((piece_move, piece_taken));
             }
         }
@@ -95,6 +104,10 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
             .contains(&(piece_move, piece_taken));
     }
 
+    fn is_turn(&self, position: &Position) -> bool {
+        position.is_turn(self.is_white)
+    }
+
     fn move_piece<'a>(
         &mut self,
         position: &Position<'a>,
@@ -106,6 +119,9 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         Self: Sized + Copy,
         Piece: From<Self>,
     {
+        if !self.is_turn(position) {
+            panic!("not your turn!");
+        }
         let mut next_position = *position;
         match piece_taken {
             Some(taken) => {
@@ -134,6 +150,7 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
 mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
+    use crate::pieces::bishop::Bishop;
     use crate::pieces::king::King;
     use crate::pieces::pawn::Pawn;
     use crate::pieces::rook::Rook;
@@ -189,6 +206,40 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "not your turn!")]
+    fn move_piece_panics_if_not_his_turn() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let mut rook = Rook::new(a1, true);
+        position.set_piece(rook);
+        // White moved last, so it is Black's turn, not White's!
+        position.last_moved_piece = Some(Piece::from(rook));
+
+        let b1 = position.echiquier.get_case(0, 1);
+        rook.move_piece(&position, PieceMove { right: 1, up: 0 }, b1, None);
+    }
+
+    #[test]
+    fn piece_is_turn_reflects_player_turn() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let a8 = position.echiquier.get_case(7, 0);
+        let white_rook = Rook::new(a1, true);
+        let black_rook = Rook::new(a8, false);
+
+        // Initially White's turn
+        assert!(white_rook.is_turn(&position));
+        assert!(!black_rook.is_turn(&position));
+
+        // After White moves, it is Black's turn
+        position.last_moved_piece = Some(Piece::from(white_rook));
+        assert!(!white_rook.is_turn(&position));
+        assert!(black_rook.is_turn(&position));
+    }
+
+    #[test]
     fn allowed_captures_excludes_king() {
         let echiquier = Echiquier::new();
         let mut position = Position::new(&echiquier);
@@ -233,5 +284,112 @@ mod tests {
         // Going up (0, 1) hits occupied a2 (line 27 break)
         let moves = king.sliding_candidate_moves(&position, &[(-1, 0), (0, 1)]);
         assert_eq!(vec![PieceMove { right: 0, up: 1 }], moves);
+    }
+
+    #[test]
+    fn sliding_candidate_moves_slides_multiple_squares() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let rook = Rook::new(a1, true);
+        position.set_piece(rook);
+
+        let a3 = position.echiquier.get_case(2, 0);
+        position.set_piece(Pawn::new(a3, true));
+
+        // Going up: a2 (distance 1, empty) then a3 (distance 2, occupied)
+        let moves = rook.sliding_candidate_moves(&position, &[(0, 1)]);
+        assert_eq!(
+            vec![PieceMove { right: 0, up: 1 }, PieceMove { right: 0, up: 2 },],
+            moves
+        );
+    }
+
+    #[test]
+    fn allowed_moves_prevents_king_from_moving_into_check() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let d8 = position.echiquier.get_case(7, 3);
+        let king = King::new(e1, true);
+        let rook = Rook::new(d8, false);
+        position.set_piece(king);
+        position.set_piece(rook);
+
+        let moves = king.allowed_moves(&position);
+        let d1_move = PieceMove { right: -1, up: 0 };
+        let d2_move = PieceMove { right: -1, up: 1 };
+        assert!(!moves.contains(&d1_move));
+        assert!(!moves.contains(&d2_move));
+        assert!(moves.contains(&PieceMove { right: 0, up: 1 }));
+        assert!(moves.contains(&PieceMove { right: 1, up: 0 }));
+        assert!(moves.contains(&PieceMove { right: 1, up: 1 }));
+    }
+
+    #[test]
+    fn allowed_moves_prevents_pinned_piece_from_leaving_king_in_check() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let e2 = position.echiquier.get_case(1, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let king = King::new(e1, true);
+        let bishop = Bishop::new(e2, true);
+        let enemy_rook = Rook::new(e8, false);
+        position.set_piece(king);
+        position.set_piece(bishop);
+        position.set_piece(enemy_rook);
+
+        let moves = bishop.allowed_moves(&position);
+        assert!(moves.is_empty());
+    }
+
+    #[test]
+    fn allowed_moves_allows_interposing_piece_to_block_check() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let b4 = position.echiquier.get_case(3, 1);
+        let e8 = position.echiquier.get_case(7, 4);
+        let king = King::new(e1, true);
+        let bishop = Bishop::new(b4, true);
+        let enemy_rook = Rook::new(e8, false);
+        position.set_piece(king);
+        position.set_piece(bishop);
+        position.set_piece(enemy_rook);
+
+        let moves = bishop.allowed_moves(&position);
+        let block_move = PieceMove { right: 3, up: 3 };
+        assert_eq!(vec![block_move], moves);
+    }
+
+    #[test]
+    fn allowed_moves_allows_king_moving_out_of_check_to_safe_square() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let e1 = position.echiquier.get_case(0, 4);
+        let e8 = position.echiquier.get_case(7, 4);
+        let king = King::new(e1, true);
+        let enemy_rook = Rook::new(e8, false);
+        position.set_piece(king);
+        position.set_piece(enemy_rook);
+
+        let moves = king.allowed_moves(&position);
+        let e2_move = PieceMove { right: 0, up: 1 };
+        assert!(!moves.contains(&e2_move));
+        assert!(moves.contains(&PieceMove { right: -1, up: 0 }));
+        assert!(moves.contains(&PieceMove { right: 1, up: 0 }));
+        assert!(moves.contains(&PieceMove { right: -1, up: 1 }));
+        assert!(moves.contains(&PieceMove { right: 1, up: 1 }));
+    }
+
+    #[test]
+    fn allowed_moves_when_piece_not_in_position() {
+        let echiquier = Echiquier::new();
+        let position = Position::new(&echiquier);
+        let e2 = position.echiquier.get_case(1, 4);
+        let pawn = Pawn::new(e2, true);
+        let moves = pawn.allowed_moves(&position);
+        assert!(!moves.is_empty());
     }
 }

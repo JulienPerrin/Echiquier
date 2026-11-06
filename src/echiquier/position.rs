@@ -2,7 +2,6 @@ use std::clone::Clone;
 use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display};
 use std::marker::Copy;
-use std::mem::discriminant;
 
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
@@ -51,16 +50,21 @@ impl<'a> Position<'a> {
         self.get_piece(case).is_some()
     }
 
-    #[allow(dead_code)]
-    pub fn get_pieces(&self, is_white: bool, kind: Option<Piece>) -> Vec<Piece> {
+    pub fn get_pieces<T: TryFrom<Piece>>(&self, is_white: bool) -> Vec<T> {
         self.pieces
             .into_iter()
             .flatten()
-            .filter(|piece| {
-                piece.is_white == is_white
-                    && kind.map_or(true, |k| discriminant(piece) == discriminant(&k))
-            })
+            .filter(|piece| piece.is_white == is_white)
+            .filter_map(|piece| T::try_from(piece).ok())
             .collect()
+    }
+
+    pub fn is_white_turn(&self) -> bool {
+        self.last_moved_piece.map_or(true, |p| !p.is_white)
+    }
+
+    pub fn is_turn(&self, is_white: bool) -> bool {
+        self.is_white_turn() == is_white
     }
 }
 
@@ -161,10 +165,10 @@ mod tests {
         let c1 = position.echiquier.get_case(0, 2);
         let e8 = position.echiquier.get_case(7, 4);
 
-        let white_rook = Piece::from(Rook::new(a1, true));
-        let white_knight = Piece::from(Knight::new(b1, true));
-        let white_bishop = Piece::from(Bishop::new(c1, true));
-        let black_king = Piece::from(King::new(e8, false));
+        let white_rook = Rook::new(a1, true);
+        let white_knight = Knight::new(b1, true);
+        let white_bishop = Bishop::new(c1, true);
+        let black_king = King::new(e8, false);
 
         position.set_piece(white_rook);
         position.set_piece(white_knight);
@@ -185,31 +189,58 @@ mod tests {
             position.to_string()
         );
 
-        // All white pieces (kind is None)
-        let white_pieces = position.get_pieces(true, None);
+        // All white pieces (type is Piece)
+        let white_pieces = position.get_pieces::<Piece>(true);
         assert_eq!(3, white_pieces.len());
-        assert!(white_pieces.contains(&white_rook));
-        assert!(white_pieces.contains(&white_knight));
-        assert!(white_pieces.contains(&white_bishop));
+        assert!(white_pieces.contains(&Piece::from(white_rook)));
+        assert!(white_pieces.contains(&Piece::from(white_knight)));
+        assert!(white_pieces.contains(&Piece::from(white_bishop)));
 
-        // Specific white piece by kind
-        let white_rooks = position.get_pieces(true, Some(Piece::from(Rook::new(a1, true))));
+        // Specific white piece by type
+        let white_rooks = position.get_pieces::<Rook>(true);
         assert_eq!(vec![white_rook], white_rooks);
 
-        // Specific black piece by kind
-        let black_kings = position.get_pieces(false, Some(Piece::from(King::new(e8, false))));
+        // Specific black piece by type
+        let black_kings = position.get_pieces::<King>(false);
         assert_eq!(vec![black_king], black_kings);
 
-        // All black pieces (kind is None)
-        let black_pieces = position.get_pieces(false, None);
-        assert_eq!(vec![black_king], black_pieces);
+        // All black pieces (type is Piece)
+        let black_pieces = position.get_pieces::<Piece>(false);
+        assert_eq!(vec![Piece::from(black_king)], black_pieces);
 
         // No match for piece type of given color
-        let black_pawns = position.get_pieces(false, Some(Piece::from(Pawn::new(a1, false))));
+        let black_pawns = position.get_pieces::<Pawn>(false);
         assert!(black_pawns.is_empty());
 
         // No match on empty board
         let empty_position = Position::new(&echiquier);
-        assert!(empty_position.get_pieces(true, None).is_empty());
+        assert!(empty_position.get_pieces::<Piece>(true).is_empty());
+    }
+
+    #[test]
+    fn position_tracks_whose_turn_it_is() {
+        let echiquier = Echiquier::new();
+        let mut position = Position::new(&echiquier);
+        let a1 = position.echiquier.get_case(0, 0);
+        let e8 = position.echiquier.get_case(7, 4);
+        let white_rook = Piece::from(Rook::new(a1, true));
+        let black_king = Piece::from(King::new(e8, false));
+
+        // 1. No moves made yet: White's turn by default
+        assert!(position.is_white_turn());
+        assert!(position.is_turn(true));
+        assert!(!position.is_turn(false));
+
+        // 2. White moved last: Black's turn
+        position.last_moved_piece = Some(white_rook);
+        assert!(!position.is_white_turn());
+        assert!(!position.is_turn(true));
+        assert!(position.is_turn(false));
+
+        // 3. Black moved last: White's turn
+        position.last_moved_piece = Some(black_king);
+        assert!(position.is_white_turn());
+        assert!(position.is_turn(true));
+        assert!(!position.is_turn(false));
     }
 }

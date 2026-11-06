@@ -4,6 +4,7 @@ use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
+use crate::game::result::Result;
 use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
@@ -116,8 +117,8 @@ impl<'a> Game<'a> {
         Piece: From<T>,
     {
         let current = *self.current_position();
-        let target_case = current
-            .echiquier
+        let echiquier = current.echiquier;
+        let target_case = echiquier
             .get_relative_case(&piece.case, piece_move)
             .expect("target case out of bounds!");
         let piece_taken = current.get_piece(&target_case).or_else(|| {
@@ -130,6 +131,27 @@ impl<'a> Game<'a> {
         let next_position = piece.move_piece(&current, piece_move, target_case, piece_taken);
         self.positions.push(next_position);
         self.current_position()
+    }
+
+    pub fn is_game_finished(&self) -> bool {
+        self.game_result().is_some()
+    }
+
+    pub fn game_result(&self) -> Option<Result> {
+        let current = self.current_position();
+        let is_white_turn = current.is_white_turn();
+        let king = current.get_pieces::<King>(is_white_turn).into_iter().next()?;
+        if king.is_in_checkmate(current) {
+            if is_white_turn {
+                Some(Result::BlackWin)
+            } else {
+                Some(Result::WhiteWin)
+            }
+        } else if king.is_in_stalemate(current) {
+            Some(Result::Draw)
+        } else {
+            None
+        }
     }
 }
 
@@ -280,5 +302,114 @@ mod tests {
   A B C D E F G H",
             game.current_position().to_string()
         );
+    }
+
+    #[test]
+    fn game_result_returns_none_and_not_finished_when_game_ongoing() {
+        let game = Game::default_game();
+        assert!(!game.is_game_finished());
+        assert_eq!(None, game.game_result());
+    }
+
+    #[test]
+    fn game_result_returns_none_when_no_king_on_board() {
+        let empty_position = Position::new(&ECHIQUIER);
+        let game = Game::new(empty_position);
+        assert!(!game.is_game_finished());
+        assert_eq!(None, game.game_result());
+    }
+
+    #[test]
+    fn game_result_black_win_when_white_in_checkmate() {
+        let mut position = Position::new(&ECHIQUIER);
+        let a1 = position.echiquier.get_case(0, 0);
+        let a2 = position.echiquier.get_case(1, 0);
+        let b2 = position.echiquier.get_case(1, 1);
+        let e1 = position.echiquier.get_case(0, 4);
+
+        let white_king = King::new(a1, true);
+        let white_pawn_a = Pawn::new(a2, true);
+        let white_pawn_b = Pawn::new(b2, true);
+        let black_rook = Rook::new(e1, false);
+
+        position.set_piece(white_king);
+        position.set_piece(white_pawn_a);
+        position.set_piece(white_pawn_b);
+        position.set_piece(black_rook);
+        // Black just moved -> White's turn, White is checkmated
+        position.last_moved_piece = Some(Piece::from(black_rook));
+
+        let game = Game::new(position);
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::BlackWin), game.game_result());
+    }
+
+    #[test]
+    fn game_result_white_win_when_black_in_checkmate() {
+        let mut position = Position::new(&ECHIQUIER);
+        let a8 = position.echiquier.get_case(7, 0);
+        let a7 = position.echiquier.get_case(6, 0);
+        let b7 = position.echiquier.get_case(6, 1);
+        let e8 = position.echiquier.get_case(7, 4);
+
+        let black_king = King::new(a8, false);
+        let black_pawn_a = Pawn::new(a7, false);
+        let black_pawn_b = Pawn::new(b7, false);
+        let white_rook = Rook::new(e8, true);
+
+        position.set_piece(black_king);
+        position.set_piece(black_pawn_a);
+        position.set_piece(black_pawn_b);
+        position.set_piece(white_rook);
+        // White just moved -> Black's turn, Black is checkmated
+        position.last_moved_piece = Some(Piece::from(white_rook));
+
+        let game = Game::new(position);
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::WhiteWin), game.game_result());
+    }
+
+    #[test]
+    fn game_result_draw_when_white_in_stalemate() {
+        let mut position = Position::new(&ECHIQUIER);
+        let a1 = position.echiquier.get_case(0, 0);
+        let a3 = position.echiquier.get_case(2, 0);
+        let c2 = position.echiquier.get_case(1, 2);
+
+        let white_king = King::new(a1, true);
+        let black_king = King::new(a3, false);
+        let black_queen = Queen::new(c2, false);
+
+        position.set_piece(white_king);
+        position.set_piece(black_king);
+        position.set_piece(black_queen);
+        // Black just moved -> White's turn, White is stalemated
+        position.last_moved_piece = Some(Piece::from(black_queen));
+
+        let game = Game::new(position);
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::Draw), game.game_result());
+    }
+
+    #[test]
+    fn game_result_draw_when_black_in_stalemate() {
+        let mut position = Position::new(&ECHIQUIER);
+        let a8 = position.echiquier.get_case(7, 0);
+        let a6 = position.echiquier.get_case(5, 0);
+        let c7 = position.echiquier.get_case(6, 2);
+
+        let black_king = King::new(a8, false);
+        let white_king = King::new(a6, true);
+        let white_queen = Queen::new(c7, true);
+
+        position.set_piece(black_king);
+        position.set_piece(white_king);
+        position.set_piece(white_queen);
+        // White just moved -> Black's turn, Black is stalemated
+        position.last_moved_piece = Some(Piece::from(white_queen));
+
+        let game = Game::new(position);
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::Draw), game.game_result());
     }
 }
