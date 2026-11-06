@@ -38,16 +38,6 @@ pub enum Piece {
     King(King),
 }
 
-#[cfg(test)]
-impl Piece {
-    pub const PAWN: Piece = Piece::Pawn(Pawn::new(Case { rank: 0, file: 0 }, true));
-    pub const KNIGHT: Piece = Piece::Knight(Knight::new(Case { rank: 0, file: 0 }, true));
-    pub const BISHOP: Piece = Piece::Bishop(Bishop::new(Case { rank: 0, file: 0 }, true));
-    pub const ROOK: Piece = Piece::Rook(Rook::new(Case { rank: 0, file: 0 }, true));
-    pub const QUEEN: Piece = Piece::Queen(Queen::new(Case { rank: 0, file: 0 }, true));
-    pub const KING: Piece = Piece::King(King::new(Case { rank: 0, file: 0 }, true));
-}
-
 impl Deref for Piece {
     type Target = dyn Movable;
 

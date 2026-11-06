@@ -171,6 +171,20 @@ mod tests {
         position.set_piece(white_bishop);
         position.set_piece(black_king);
 
+        assert_eq!(
+            "\
+8 · · · · ♔ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · · · ·
+1 ♜ ♞ ♝ · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
+
         // All white pieces (kind is None)
         let white_pieces = position.get_pieces(true, None);
         assert_eq!(3, white_pieces.len());
@@ -179,11 +193,11 @@ mod tests {
         assert!(white_pieces.contains(&white_bishop));
 
         // Specific white piece by kind
-        let white_rooks = position.get_pieces(true, Some(Piece::ROOK));
+        let white_rooks = position.get_pieces(true, Some(Piece::from(Rook::new(a1, true))));
         assert_eq!(vec![white_rook], white_rooks);
 
         // Specific black piece by kind
-        let black_kings = position.get_pieces(false, Some(Piece::KING));
+        let black_kings = position.get_pieces(false, Some(Piece::from(King::new(e8, false))));
         assert_eq!(vec![black_king], black_kings);
 
         // All black pieces (kind is None)
@@ -191,7 +205,7 @@ mod tests {
         assert_eq!(vec![black_king], black_pieces);
 
         // No match for piece type of given color
-        let black_pawns = position.get_pieces(false, Some(Piece::PAWN));
+        let black_pawns = position.get_pieces(false, Some(Piece::from(Pawn::new(a1, false))));
         assert!(black_pawns.is_empty());
 
         // No match on empty board
