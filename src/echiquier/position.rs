@@ -2,18 +2,12 @@ use std::clone::Clone;
 use std::cmp::PartialEq;
 use std::fmt::{self, Debug, Display};
 use std::marker::Copy;
+use std::mem::discriminant;
 
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
 use crate::echiquier::piece_move::PieceMove;
-use crate::pieces::bishop::Bishop;
-use crate::pieces::king::King;
-use crate::pieces::knight::Knight;
-use crate::pieces::pawn::Pawn;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
-use crate::pieces::queen::Queen;
-use crate::pieces::rook::Rook;
+use crate::pieces::piece::{Piece, PieceData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Position<'a> {
@@ -32,7 +26,8 @@ impl<'a> Position<'a> {
         }
     }
 
-    pub fn set_piece(&mut self, piece: Piece) {
+    pub fn set_piece(&mut self, piece: impl Into<Piece>) {
+        let piece = piece.into();
         let index = (piece.case.rank * 8 + piece.case.file) as usize;
         self.pieces[index] = Some(piece);
     }
@@ -47,7 +42,7 @@ impl<'a> Position<'a> {
         self.get_piece(&target_case)
     }
 
-    pub fn remove_piece(&mut self, piece: &Piece) {
+    pub fn remove_piece(&mut self, piece: &PieceData) {
         let index = (piece.case.rank * 8 + piece.case.file) as usize;
         self.pieces[index] = None;
     }
@@ -57,11 +52,14 @@ impl<'a> Position<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn get_pieces(&self, is_white: bool, kind: Option<PieceKind>) -> Vec<Piece> {
+    pub fn get_pieces(&self, is_white: bool, kind: Option<Piece>) -> Vec<Piece> {
         self.pieces
             .into_iter()
             .flatten()
-            .filter(|piece| piece.is_white == is_white && kind.map_or(true, |k| piece.kind == k))
+            .filter(|piece| {
+                piece.is_white == is_white
+                    && kind.map_or(true, |k| discriminant(piece) == discriminant(&k))
+            })
             .collect()
     }
 }
@@ -69,24 +67,13 @@ impl<'a> Position<'a> {
 const EMPTY_SQUARE_SYMBOL: char = '·';
 const FILES: [&str; 8] = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-fn piece_symbol(piece: Piece) -> String {
-    match piece.kind {
-        PieceKind::PAWN => Pawn { piece }.to_string(),
-        PieceKind::KNIGHT => Knight { piece }.to_string(),
-        PieceKind::BISHOP => Bishop { piece }.to_string(),
-        PieceKind::ROOK => Rook { piece }.to_string(),
-        PieceKind::QUEEN => Queen { piece }.to_string(),
-        PieceKind::KING => King { piece }.to_string(),
-    }
-}
-
 impl<'a> Display for Position<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for rank in (0..8).rev() {
             let mut squares = Vec::new();
             for file in 0..8 {
                 let square = match self.pieces[rank * 8 + file] {
-                    Some(piece) => piece_symbol(piece),
+                    Some(piece) => piece.to_string(),
                     None => EMPTY_SQUARE_SYMBOL.to_string(),
                 };
                 squares.push(square);
@@ -100,7 +87,12 @@ impl<'a> Display for Position<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pieces::bishop::Bishop;
+    use crate::pieces::king::King;
+    use crate::pieces::knight::Knight;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::queen::Queen;
+    use crate::pieces::rook::Rook;
 
     #[test]
     fn print_position_with_pawn() {
@@ -108,7 +100,7 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let e2 = position.echiquier.get_case(1, 4);
         let pawn = Pawn::new(e2, true);
-        position.set_piece(*pawn);
+        position.set_piece(pawn);
 
         assert_eq!(
             "\
@@ -137,13 +129,13 @@ mod tests {
         let f2 = position.echiquier.get_case(1, 5);
         let e8 = position.echiquier.get_case(7, 4);
 
-        position.set_piece(*Rook::new(a1, true));
-        position.set_piece(*Knight::new(b1, true));
-        position.set_piece(*Bishop::new(c1, true));
-        position.set_piece(*Queen::new(d1, true));
-        position.set_piece(*King::new(e1, true));
-        position.set_piece(*Pawn::new(f2, true));
-        position.set_piece(*King::new(e8, false));
+        position.set_piece(Rook::new(a1, true));
+        position.set_piece(Knight::new(b1, true));
+        position.set_piece(Bishop::new(c1, true));
+        position.set_piece(Queen::new(d1, true));
+        position.set_piece(King::new(e1, true));
+        position.set_piece(Pawn::new(f2, true));
+        position.set_piece(King::new(e8, false));
 
         assert_eq!(
             "\
@@ -169,10 +161,10 @@ mod tests {
         let c1 = position.echiquier.get_case(0, 2);
         let e8 = position.echiquier.get_case(7, 4);
 
-        let white_rook = *Rook::new(a1, true);
-        let white_knight = *Knight::new(b1, true);
-        let white_bishop = *Bishop::new(c1, true);
-        let black_king = *King::new(e8, false);
+        let white_rook = Piece::from(Rook::new(a1, true));
+        let white_knight = Piece::from(Knight::new(b1, true));
+        let white_bishop = Piece::from(Bishop::new(c1, true));
+        let black_king = Piece::from(King::new(e8, false));
 
         position.set_piece(white_rook);
         position.set_piece(white_knight);
@@ -187,11 +179,11 @@ mod tests {
         assert!(white_pieces.contains(&white_bishop));
 
         // Specific white piece by kind
-        let white_rooks = position.get_pieces(true, Some(PieceKind::ROOK));
+        let white_rooks = position.get_pieces(true, Some(Piece::ROOK));
         assert_eq!(vec![white_rook], white_rooks);
 
         // Specific black piece by kind
-        let black_kings = position.get_pieces(false, Some(PieceKind::KING));
+        let black_kings = position.get_pieces(false, Some(Piece::KING));
         assert_eq!(vec![black_king], black_kings);
 
         // All black pieces (kind is None)
@@ -199,7 +191,7 @@ mod tests {
         assert_eq!(vec![black_king], black_pieces);
 
         // No match for piece type of given color
-        let black_pawns = position.get_pieces(false, Some(PieceKind::PAWN));
+        let black_pawns = position.get_pieces(false, Some(Piece::PAWN));
         assert!(black_pawns.is_empty());
 
         // No match on empty board

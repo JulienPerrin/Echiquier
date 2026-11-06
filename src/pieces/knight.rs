@@ -5,12 +5,11 @@ use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::movable::Movable;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::piece::PieceData;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Knight {
-    pub piece: Piece,
+    pub piece: PieceData,
 }
 
 impl Knight {
@@ -27,13 +26,13 @@ impl Knight {
 
     pub const fn new(case: Case, is_white: bool) -> Self {
         Knight {
-            piece: Piece::new(case, PieceKind::KNIGHT, is_white),
+            piece: PieceData::new(case, is_white),
         }
     }
 }
 
 impl Deref for Knight {
-    type Target = Piece;
+    type Target = PieceData;
 
     fn deref(&self) -> &Self::Target {
         &self.piece
@@ -63,6 +62,7 @@ mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::piece::Piece;
 
     #[test]
     fn knight_moves_l_shape_and_jumps_over_pieces() {
@@ -70,7 +70,7 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let e4 = position.echiquier.get_case(3, 4);
         let mut knight = Knight::new(e4, true);
-        position.set_piece(*knight);
+        position.set_piece(knight);
 
         // Surround knight with friendly pawns on all adjacent squares to test jumping
         for dr in -1..=1 {
@@ -80,7 +80,7 @@ mod tests {
                         .echiquier
                         .get_relative_case(&e4, PieceMove { right: dr, up: du })
                     {
-                        position.set_piece(*Pawn::new(adjacent, true));
+                        position.set_piece(Pawn::new(adjacent, true));
                     }
                 }
             }
@@ -103,7 +103,7 @@ mod tests {
         let f6 = position.echiquier.get_case(5, 5);
         let next_position = knight.move_piece(&position, move_f6, f6, None);
         assert_eq!(f6, knight.case);
-        assert_eq!(Some(*knight), next_position.get_piece(&f6));
+        assert_eq!(Some(Piece::from(knight)), next_position.get_piece(&f6));
         assert_eq!(None, next_position.get_piece(&e4));
         assert_eq!("♞", knight.to_string());
         let black_knight = Knight::new(e4, false);
@@ -118,20 +118,20 @@ mod tests {
         let c3 = position.echiquier.get_case(2, 2);
         let mut white_knight = Knight::new(b1, true);
         let black_pawn_c3 = Pawn::new(c3, false);
-        position.set_piece(*white_knight);
-        position.set_piece(*black_pawn_c3);
+        position.set_piece(white_knight);
+        position.set_piece(black_pawn_c3);
 
         let capture_move = PieceMove { right: 1, up: 2 };
         assert_eq!(
-            vec![(capture_move, *black_pawn_c3)],
+            vec![(capture_move, Piece::from(black_pawn_c3))],
             white_knight.allowed_captures(&position)
         );
-        assert!(white_knight.is_capture_allowed(&position, capture_move, *black_pawn_c3));
+        assert!(white_knight.is_capture_allowed(&position, capture_move, black_pawn_c3.into()));
 
         let next_position =
-            white_knight.move_piece(&position, capture_move, c3, Some(*black_pawn_c3));
+            white_knight.move_piece(&position, capture_move, c3, Some(black_pawn_c3.into()));
         assert_eq!(c3, white_knight.case);
-        assert_eq!(Some(*white_knight), next_position.get_piece(&c3));
+        assert_eq!(Some(Piece::from(white_knight)), next_position.get_piece(&c3));
         assert_eq!(None, next_position.get_piece(&b1));
     }
 }

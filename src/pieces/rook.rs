@@ -6,12 +6,11 @@ use crate::echiquier::direction::Direction;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::movable::Movable;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::piece::PieceData;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rook {
-    pub piece: Piece,
+    pub piece: PieceData,
 }
 
 impl Rook {
@@ -19,13 +18,13 @@ impl Rook {
 
     pub const fn new(case: Case, is_white: bool) -> Self {
         Rook {
-            piece: Piece::new(case, PieceKind::ROOK, is_white),
+            piece: PieceData::new(case, is_white),
         }
     }
 }
 
 impl Deref for Rook {
-    type Target = Piece;
+    type Target = PieceData;
 
     fn deref(&self) -> &Self::Target {
         &self.piece
@@ -55,6 +54,7 @@ mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::piece::Piece;
 
     #[test]
     fn rook_moves_horizontally_and_vertically_and_cannot_jump_over_pieces() {
@@ -62,7 +62,7 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let a1 = position.echiquier.get_case(0, 0);
         let mut rook = Rook::new(a1, true);
-        position.set_piece(*rook);
+        position.set_piece(rook);
 
         // Movement is not yet made (track movement for castling)
         assert!(rook.last_move.is_none());
@@ -70,7 +70,7 @@ mod tests {
         // Place a friendly pawn at a3 (rank 2, file 0)
         let a3 = position.echiquier.get_case(2, 0);
         let friendly_pawn = Pawn::new(a3, true);
-        position.set_piece(*friendly_pawn);
+        position.set_piece(friendly_pawn);
 
         let allowed = rook.allowed_moves(&position);
         // Can move up to a2 (0, 1) but not onto the friendly pawn at a3 (0, 2), and horizontally along rank 0: b1..h1
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(b1, rook.case);
         assert_eq!(Some(right_one), rook.last_move);
         assert!(rook.last_move.is_some());
-        assert_eq!(Some(*rook), next_position.get_piece(&b1));
+        assert_eq!(Some(Piece::from(rook)), next_position.get_piece(&b1));
         assert_eq!(None, next_position.get_piece(&a1));
         assert_eq!("♜", rook.to_string());
         let black_rook = Rook::new(b1, false);
@@ -104,15 +104,15 @@ mod tests {
         let a3 = position.echiquier.get_case(2, 0);
         let mut white_rook = Rook::new(a1, true);
         let black_pawn_a3 = Pawn::new(a3, false);
-        position.set_piece(*white_rook);
-        position.set_piece(*black_pawn_a3);
+        position.set_piece(white_rook);
+        position.set_piece(black_pawn_a3);
 
         let capture_move = PieceMove { right: 0, up: 2 };
         assert_eq!(
-            vec![(capture_move, *black_pawn_a3)],
+            vec![(capture_move, Piece::from(black_pawn_a3))],
             white_rook.allowed_captures(&position)
         );
-        assert!(white_rook.is_capture_allowed(&position, capture_move, *black_pawn_a3));
+        assert!(white_rook.is_capture_allowed(&position, capture_move, black_pawn_a3.into()));
 
         // Cannot jump past a3 to a4
         assert!(
@@ -122,9 +122,9 @@ mod tests {
         );
 
         let next_position =
-            white_rook.move_piece(&position, capture_move, a3, Some(*black_pawn_a3));
+            white_rook.move_piece(&position, capture_move, a3, Some(black_pawn_a3.into()));
         assert_eq!(a3, white_rook.case);
-        assert_eq!(Some(*white_rook), next_position.get_piece(&a3));
+        assert_eq!(Some(Piece::from(white_rook)), next_position.get_piece(&a3));
         assert_eq!(None, next_position.get_piece(&a1));
     }
 }

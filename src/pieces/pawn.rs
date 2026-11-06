@@ -5,24 +5,23 @@ use super::movable::Movable;
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::piece::{Piece, PieceData};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pawn {
-    pub piece: Piece,
+    pub piece: PieceData,
 }
 
 impl Pawn {
     pub const fn new(case: Case, is_white: bool) -> Self {
         Pawn {
-            piece: Piece::new(case, PieceKind::PAWN, is_white),
+            piece: PieceData::new(case, is_white),
         }
     }
 }
 
 impl Deref for Pawn {
-    type Target = Piece;
+    type Target = PieceData;
 
     fn deref(&self) -> &Self::Target {
         &self.piece
@@ -89,7 +88,7 @@ impl Movable for Pawn {
                 captures.push((diagonal_move, target_piece));
             } else if let Some(adjacent_piece) =
                 position.get_relative_piece(&self.case, PieceMove { right: right_value, up: 0 })
-                && adjacent_piece.kind == PieceKind::PAWN
+                && matches!(adjacent_piece, Piece::Pawn(_))
                 && adjacent_piece.is_white != self.is_white
                 && position.last_moved_piece == Some(adjacent_piece)
                 && adjacent_piece.last_move
@@ -117,7 +116,7 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let e2 = position.echiquier.get_case(1, 4);
         let mut pawn = Pawn::new(e2, true);
-        position.set_piece(*pawn);
+        position.set_piece(pawn);
 
         let one_up = PieceMove { right: 0, up: 1 };
         let two_up = PieceMove { right: 0, up: 2 };
@@ -130,7 +129,7 @@ mod tests {
         let next_position = pawn.move_piece(&position, one_up, e3, None);
         assert_eq!(e3, pawn.case);
         assert_eq!(
-            Some(*pawn),
+            Some(Piece::from(pawn)),
             next_position.pieces[(e3.rank * 8 + e3.file) as usize]
         );
         assert_eq!(None, next_position.pieces[(e2.rank * 8 + e2.file) as usize]);
@@ -144,7 +143,7 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let e7 = position.echiquier.get_case(6, 4);
         let mut pawn = Pawn::new(e7, false);
-        position.set_piece(*pawn);
+        position.set_piece(pawn);
 
         let one_down = PieceMove { right: 0, up: -1 };
         let two_down = PieceMove { right: 0, up: -2 };
@@ -157,7 +156,7 @@ mod tests {
         let next_position = pawn.move_piece(&position, two_down, e5, None);
         assert_eq!(e5, pawn.case);
         assert_eq!(
-            Some(*pawn),
+            Some(Piece::from(pawn)),
             next_position.pieces[(e5.rank * 8 + e5.file) as usize]
         );
         assert_eq!(None, next_position.pieces[(e7.rank * 8 + e7.file) as usize]);
@@ -173,17 +172,17 @@ mod tests {
         let e3 = position.echiquier.get_case(2, 4);
         let e4 = position.echiquier.get_case(3, 4);
         let pawn = Pawn::new(e2, true);
-        position.set_piece(*pawn);
+        position.set_piece(pawn);
 
         let mut blocked_two_squares = position;
-        blocked_two_squares.set_piece(*Pawn::new(e4, false));
+        blocked_two_squares.set_piece(Pawn::new(e4, false));
         assert_eq!(
             vec![PieceMove { right: 0, up: 1 }],
             pawn.allowed_moves(&blocked_two_squares)
         );
 
         let mut blocked_immediately = position;
-        blocked_immediately.set_piece(*Pawn::new(e3, false));
+        blocked_immediately.set_piece(Pawn::new(e3, false));
         assert!(pawn.allowed_moves(&blocked_immediately).is_empty());
     }
 
@@ -197,26 +196,26 @@ mod tests {
         let mut white_pawn = Pawn::new(e4, true);
         let black_pawn_d5 = Pawn::new(d5, false);
         let friendly_pawn_f5 = Pawn::new(f5, true);
-        position.set_piece(*white_pawn);
-        position.set_piece(*black_pawn_d5);
-        position.set_piece(*friendly_pawn_f5);
+        position.set_piece(white_pawn);
+        position.set_piece(black_pawn_d5);
+        position.set_piece(friendly_pawn_f5);
 
         let capture_move = PieceMove { right: -1, up: 1 };
         assert_eq!(
-            vec![(capture_move, *black_pawn_d5)],
+            vec![(capture_move, Piece::from(black_pawn_d5))],
             white_pawn.allowed_captures(&position)
         );
-        assert!(white_pawn.is_capture_allowed(&position, capture_move, *black_pawn_d5));
+        assert!(white_pawn.is_capture_allowed(&position, capture_move, black_pawn_d5.into()));
 
         let next_position =
-            white_pawn.move_piece(&position, capture_move, d5, Some(*black_pawn_d5));
+            white_pawn.move_piece(&position, capture_move, d5, Some(black_pawn_d5.into()));
         assert_eq!(d5, white_pawn.case);
-        assert_eq!(Some(*white_pawn), next_position.get_piece(&d5));
+        assert_eq!(Some(Piece::from(white_pawn)), next_position.get_piece(&d5));
         assert_eq!(None, next_position.get_piece(&e4));
 
         let mut black_pawn_for_capture = black_pawn_d5;
         let black_capture_move = PieceMove { right: 1, up: -1 };
-        let taken_white_pawn = *Pawn::new(e4, true);
+        let taken_white_pawn = Piece::from(Pawn::new(e4, true));
         assert_eq!(
             vec![(black_capture_move, taken_white_pawn)],
             black_pawn_for_capture.allowed_captures(&position)
@@ -228,7 +227,7 @@ mod tests {
             Some(taken_white_pawn),
         );
         assert_eq!(
-            Some(*black_pawn_for_capture),
+            Some(Piece::from(black_pawn_for_capture)),
             after_black_capture.get_piece(&e4)
         );
         assert_eq!(None, after_black_capture.get_piece(&d5));
@@ -273,19 +272,19 @@ mod tests {
         white_pawn.last_move = Some(PieceMove { right: 0, up: 1 });
         let mut black_pawn = Pawn::new(d7, false);
         let mut other_black_pawn = Pawn::new(a7, false);
-        position.set_piece(*white_pawn);
-        position.set_piece(*black_pawn);
-        position.set_piece(*other_black_pawn);
+        position.set_piece(white_pawn);
+        position.set_piece(black_pawn);
+        position.set_piece(other_black_pawn);
 
         // Black pawn moves 2 squares from d7 to d5
         let after_d5 = black_pawn.move_piece(&position, PieceMove { right: 0, up: -2 }, d5, None);
 
         let en_passant_move = PieceMove { right: -1, up: 1 };
         assert_eq!(
-            vec![(en_passant_move, *black_pawn)],
+            vec![(en_passant_move, Piece::from(black_pawn))],
             white_pawn.allowed_captures(&after_d5)
         );
-        assert!(white_pawn.is_capture_allowed(&after_d5, en_passant_move, *black_pawn));
+        assert!(white_pawn.is_capture_allowed(&after_d5, en_passant_move, black_pawn.into()));
 
         // If another move happens in between, en-passant is no longer allowed
         let after_other_move =
@@ -294,9 +293,9 @@ mod tests {
 
         // Execute en-passant capture on `after_d5`: white pawn moves to d6 and black pawn on d5 is removed
         let after_en_passant =
-            white_pawn.move_piece(&after_d5, en_passant_move, d6, Some(*black_pawn));
+            white_pawn.move_piece(&after_d5, en_passant_move, d6, Some(black_pawn.into()));
         assert_eq!(d6, white_pawn.case);
-        assert_eq!(Some(*white_pawn), after_en_passant.get_piece(&d6));
+        assert_eq!(Some(Piece::from(white_pawn)), after_en_passant.get_piece(&d6));
         assert_eq!(None, after_en_passant.get_piece(&e5));
         assert_eq!(None, after_en_passant.get_piece(&d5));
     }
@@ -315,22 +314,22 @@ mod tests {
         let mut black_pawn = Pawn::new(d4, false);
         black_pawn.last_move = Some(PieceMove { right: 0, up: -1 });
         let mut white_pawn = Pawn::new(e2, true);
-        position.set_piece(*black_pawn);
-        position.set_piece(*white_pawn);
+        position.set_piece(black_pawn);
+        position.set_piece(white_pawn);
 
         // White pawn moves 2 squares from e2 to e4
         let after_e4 = white_pawn.move_piece(&position, PieceMove { right: 0, up: 2 }, e4, None);
 
         let en_passant_move = PieceMove { right: 1, up: -1 };
         assert_eq!(
-            vec![(en_passant_move, *white_pawn)],
+            vec![(en_passant_move, Piece::from(white_pawn))],
             black_pawn.allowed_captures(&after_e4)
         );
 
         let after_en_passant =
-            black_pawn.move_piece(&after_e4, en_passant_move, e3, Some(*white_pawn));
+            black_pawn.move_piece(&after_e4, en_passant_move, e3, Some(white_pawn.into()));
         assert_eq!(e3, black_pawn.case);
-        assert_eq!(Some(*black_pawn), after_en_passant.get_piece(&e3));
+        assert_eq!(Some(Piece::from(black_pawn)), after_en_passant.get_piece(&e3));
         assert_eq!(None, after_en_passant.get_piece(&d4));
         assert_eq!(None, after_en_passant.get_piece(&e4));
     }

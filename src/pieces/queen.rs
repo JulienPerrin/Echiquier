@@ -6,12 +6,11 @@ use crate::echiquier::direction::Direction;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::movable::Movable;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::piece::PieceData;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Queen {
-    pub piece: Piece,
+    pub piece: PieceData,
 }
 
 impl Queen {
@@ -19,13 +18,13 @@ impl Queen {
 
     pub const fn new(case: Case, is_white: bool) -> Self {
         Queen {
-            piece: Piece::new(case, PieceKind::QUEEN, is_white),
+            piece: PieceData::new(case, is_white),
         }
     }
 }
 
 impl Deref for Queen {
-    type Target = Piece;
+    type Target = PieceData;
 
     fn deref(&self) -> &Self::Target {
         &self.piece
@@ -55,6 +54,7 @@ mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::piece::Piece;
 
     #[test]
     fn queen_moves_horizontally_vertically_diagonally_and_cannot_jump_over_pieces() {
@@ -62,15 +62,15 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let d1 = position.echiquier.get_case(0, 3);
         let mut queen = Queen::new(d1, true);
-        position.set_piece(*queen);
+        position.set_piece(queen);
 
         // Place a friendly pawn at d3 (rank 2, file 3) blocking vertical moves past d3
         let d3 = position.echiquier.get_case(2, 3);
-        position.set_piece(*Pawn::new(d3, true));
+        position.set_piece(Pawn::new(d3, true));
 
         // Place a friendly pawn at b3 (rank 2, file 1) blocking diagonal moves past b3
         let b3 = position.echiquier.get_case(2, 1);
-        position.set_piece(*Pawn::new(b3, true));
+        position.set_piece(Pawn::new(b3, true));
 
         let allowed = queen.allowed_moves(&position);
 
@@ -95,7 +95,7 @@ mod tests {
         let d2 = position.echiquier.get_case(1, 3);
         let next_position = queen.move_piece(&position, PieceMove { right: 0, up: 1 }, d2, None);
         assert_eq!(d2, queen.case);
-        assert_eq!(Some(*queen), next_position.get_piece(&d2));
+        assert_eq!(Some(Piece::from(queen)), next_position.get_piece(&d2));
         assert_eq!(None, next_position.get_piece(&d1));
         assert_eq!("♛", queen.to_string());
         let black_queen = Queen::new(d1, false);
@@ -110,15 +110,15 @@ mod tests {
         let d4 = position.echiquier.get_case(3, 3);
         let mut white_queen = Queen::new(d1, true);
         let black_pawn_d4 = Pawn::new(d4, false);
-        position.set_piece(*white_queen);
-        position.set_piece(*black_pawn_d4);
+        position.set_piece(white_queen);
+        position.set_piece(black_pawn_d4);
 
         let capture_move = PieceMove { right: 0, up: 3 };
         assert_eq!(
-            vec![(capture_move, *black_pawn_d4)],
+            vec![(capture_move, Piece::from(black_pawn_d4))],
             white_queen.allowed_captures(&position)
         );
-        assert!(white_queen.is_capture_allowed(&position, capture_move, *black_pawn_d4));
+        assert!(white_queen.is_capture_allowed(&position, capture_move, black_pawn_d4.into()));
 
         // Cannot jump past d4 to d5
         assert!(
@@ -128,9 +128,9 @@ mod tests {
         );
 
         let next_position =
-            white_queen.move_piece(&position, capture_move, d4, Some(*black_pawn_d4));
+            white_queen.move_piece(&position, capture_move, d4, Some(black_pawn_d4.into()));
         assert_eq!(d4, white_queen.case);
-        assert_eq!(Some(*white_queen), next_position.get_piece(&d4));
+        assert_eq!(Some(Piece::from(white_queen)), next_position.get_piece(&d4));
         assert_eq!(None, next_position.get_piece(&d1));
     }
 }

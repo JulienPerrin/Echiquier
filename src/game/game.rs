@@ -9,6 +9,7 @@ use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
 use crate::pieces::movable::Movable;
 use crate::pieces::pawn::Pawn;
+use crate::pieces::piece::Piece;
 use crate::pieces::queen::Queen;
 use crate::pieces::rook::Rook;
 
@@ -17,22 +18,22 @@ pub const ECHIQUIER: Echiquier = Echiquier::new();
 pub const INITIAL_POSITION: Position<'static> = Position {
     echiquier: &ECHIQUIER,
     pieces: [
-        Some(Rook::new(Case { rank: 0, file: 0 }, true).piece),
-        Some(Knight::new(Case { rank: 0, file: 1 }, true).piece),
-        Some(Bishop::new(Case { rank: 0, file: 2 }, true).piece),
-        Some(Queen::new(Case { rank: 0, file: 3 }, true).piece),
-        Some(King::new(Case { rank: 0, file: 4 }, true).piece),
-        Some(Bishop::new(Case { rank: 0, file: 5 }, true).piece),
-        Some(Knight::new(Case { rank: 0, file: 6 }, true).piece),
-        Some(Rook::new(Case { rank: 0, file: 7 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 0 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 1 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 2 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 3 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 4 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 5 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 6 }, true).piece),
-        Some(Pawn::new(Case { rank: 1, file: 7 }, true).piece),
+        Some(Piece::Rook(Rook::new(Case { rank: 0, file: 0 }, true))),
+        Some(Piece::Knight(Knight::new(Case { rank: 0, file: 1 }, true))),
+        Some(Piece::Bishop(Bishop::new(Case { rank: 0, file: 2 }, true))),
+        Some(Piece::Queen(Queen::new(Case { rank: 0, file: 3 }, true))),
+        Some(Piece::King(King::new(Case { rank: 0, file: 4 }, true))),
+        Some(Piece::Bishop(Bishop::new(Case { rank: 0, file: 5 }, true))),
+        Some(Piece::Knight(Knight::new(Case { rank: 0, file: 6 }, true))),
+        Some(Piece::Rook(Rook::new(Case { rank: 0, file: 7 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 0 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 1 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 2 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 3 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 4 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 5 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 6 }, true))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 1, file: 7 }, true))),
         None,
         None,
         None,
@@ -65,22 +66,22 @@ pub const INITIAL_POSITION: Position<'static> = Position {
         None,
         None,
         None,
-        Some(Pawn::new(Case { rank: 6, file: 0 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 1 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 2 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 3 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 4 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 5 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 6 }, false).piece),
-        Some(Pawn::new(Case { rank: 6, file: 7 }, false).piece),
-        Some(Rook::new(Case { rank: 7, file: 0 }, false).piece),
-        Some(Knight::new(Case { rank: 7, file: 1 }, false).piece),
-        Some(Bishop::new(Case { rank: 7, file: 2 }, false).piece),
-        Some(Queen::new(Case { rank: 7, file: 3 }, false).piece),
-        Some(King::new(Case { rank: 7, file: 4 }, false).piece),
-        Some(Bishop::new(Case { rank: 7, file: 5 }, false).piece),
-        Some(Knight::new(Case { rank: 7, file: 6 }, false).piece),
-        Some(Rook::new(Case { rank: 7, file: 7 }, false).piece),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 0 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 1 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 2 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 3 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 4 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 5 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 6 }, false))),
+        Some(Piece::Pawn(Pawn::new(Case { rank: 6, file: 7 }, false))),
+        Some(Piece::Rook(Rook::new(Case { rank: 7, file: 0 }, false))),
+        Some(Piece::Knight(Knight::new(Case { rank: 7, file: 1 }, false))),
+        Some(Piece::Bishop(Bishop::new(Case { rank: 7, file: 2 }, false))),
+        Some(Piece::Queen(Queen::new(Case { rank: 7, file: 3 }, false))),
+        Some(Piece::King(King::new(Case { rank: 7, file: 4 }, false))),
+        Some(Piece::Bishop(Bishop::new(Case { rank: 7, file: 5 }, false))),
+        Some(Piece::Knight(Knight::new(Case { rank: 7, file: 6 }, false))),
+        Some(Piece::Rook(Rook::new(Case { rank: 7, file: 7 }, false))),
     ],
     last_moved_piece: None,
 };
@@ -109,7 +110,11 @@ impl<'a> Game<'a> {
         self.positions.last().unwrap_or(&self.initial_position)
     }
 
-    pub fn play_move<T: Movable>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a> {
+    pub fn play_move<T>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a>
+    where
+        T: Movable + Copy,
+        Piece: From<T>,
+    {
         let current = *self.current_position();
         let target_case = current.echiquier.get_relative_case(&piece.case, piece_move).expect("target case out of bounds!");
         let piece_taken = current.get_piece(&target_case).or_else(|| {
@@ -161,7 +166,7 @@ mod tests {
         assert_eq!(4, game.positions.len());
         assert_eq!(after_capture, *game.current_position());
         let d5 = INITIAL_POSITION.echiquier.get_case(4, 3);
-        assert_eq!(Some(*white_pawn), after_capture.get_piece(&d5));
+        assert_eq!(Some(Piece::from(white_pawn)), after_capture.get_piece(&d5));
     }
 
     #[test]
@@ -202,7 +207,7 @@ mod tests {
 
         let after_en_passant = *game.play_move(&mut white_pawn, PieceMove { right: -1, up: 1 });
         assert_eq!(d6, white_pawn.case);
-        assert_eq!(Some(*white_pawn), after_en_passant.get_piece(&d6));
+        assert_eq!(Some(Piece::from(white_pawn)), after_en_passant.get_piece(&d6));
         assert_eq!(None, after_en_passant.get_piece(&d5));
         assert_eq!(None, after_en_passant.get_piece(&e5));
     }

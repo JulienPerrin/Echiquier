@@ -4,6 +4,5 @@ pub mod knight;
 pub mod movable;
 pub mod pawn;
 pub mod piece;
-pub mod piece_kind;
 pub mod queen;
 pub mod rook;

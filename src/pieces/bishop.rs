@@ -6,12 +6,11 @@ use crate::echiquier::direction::Direction;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::movable::Movable;
-use crate::pieces::piece::Piece;
-use crate::pieces::piece_kind::PieceKind;
+use crate::pieces::piece::PieceData;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bishop {
-    pub piece: Piece,
+    pub piece: PieceData,
 }
 
 impl Bishop {
@@ -19,13 +18,13 @@ impl Bishop {
 
     pub const fn new(case: Case, is_white: bool) -> Self {
         Bishop {
-            piece: Piece::new(case, PieceKind::BISHOP, is_white),
+            piece: PieceData::new(case, is_white),
         }
     }
 }
 
 impl Deref for Bishop {
-    type Target = Piece;
+    type Target = PieceData;
 
     fn deref(&self) -> &Self::Target {
         &self.piece
@@ -55,6 +54,7 @@ mod tests {
     use super::*;
     use crate::echiquier::echiquier::Echiquier;
     use crate::pieces::pawn::Pawn;
+    use crate::pieces::piece::Piece;
 
     #[test]
     fn bishop_moves_diagonally_and_cannot_jump_over_pieces() {
@@ -62,12 +62,12 @@ mod tests {
         let mut position = Position::new(&echiquier);
         let c1 = position.echiquier.get_case(0, 2);
         let mut bishop = Bishop::new(c1, true);
-        position.set_piece(*bishop);
+        position.set_piece(bishop);
 
         // Place a friendly pawn at e3 (blocking further squares along that diagonal)
         let e3 = position.echiquier.get_case(2, 4);
         let friendly_pawn = Pawn::new(e3, true);
-        position.set_piece(*friendly_pawn);
+        position.set_piece(friendly_pawn);
 
         let allowed = bishop.allowed_moves(&position);
         // From c1:
@@ -84,7 +84,7 @@ mod tests {
         let d2 = position.echiquier.get_case(1, 3);
         let next_position = bishop.move_piece(&position, PieceMove { right: 1, up: 1 }, d2, None);
         assert_eq!(d2, bishop.case);
-        assert_eq!(Some(*bishop), next_position.get_piece(&d2));
+        assert_eq!(Some(Piece::from(bishop)), next_position.get_piece(&d2));
         assert_eq!(None, next_position.get_piece(&c1));
         assert_eq!("♝", bishop.to_string());
         let black_bishop = Bishop::new(c1, false);
@@ -99,15 +99,15 @@ mod tests {
         let e3 = position.echiquier.get_case(2, 4);
         let mut white_bishop = Bishop::new(c1, true);
         let black_pawn_e3 = Pawn::new(e3, false);
-        position.set_piece(*white_bishop);
-        position.set_piece(*black_pawn_e3);
+        position.set_piece(white_bishop);
+        position.set_piece(black_pawn_e3);
 
         let capture_move = PieceMove { right: 2, up: 2 };
         assert_eq!(
-            vec![(capture_move, *black_pawn_e3)],
+            vec![(capture_move, Piece::from(black_pawn_e3))],
             white_bishop.allowed_captures(&position)
         );
-        assert!(white_bishop.is_capture_allowed(&position, capture_move, *black_pawn_e3));
+        assert!(white_bishop.is_capture_allowed(&position, capture_move, black_pawn_e3.into()));
 
         // Cannot jump past e3 to f4
         assert!(
@@ -117,9 +117,9 @@ mod tests {
         );
 
         let next_position =
-            white_bishop.move_piece(&position, capture_move, e3, Some(*black_pawn_e3));
+            white_bishop.move_piece(&position, capture_move, e3, Some(black_pawn_e3.into()));
         assert_eq!(e3, white_bishop.case);
-        assert_eq!(Some(*white_bishop), next_position.get_piece(&e3));
+        assert_eq!(Some(Piece::from(white_bishop)), next_position.get_piece(&e3));
         assert_eq!(None, next_position.get_piece(&c1));
     }
 }
