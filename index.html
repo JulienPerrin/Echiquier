@@ -3,16 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Echiquier</title>
+    <title>The Immortal Game | Echiquier</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main class="app">
-      <h1>Echiquier</h1>
-      <p id="api-status"></p>
-      <div class="board-container">
-        <g-chess-board id="board" coordinates="outside"></g-chess-board>
+    <a href="#moves-heading" class="skip-link visually-hidden">Skip to move history</a>
+    <main class="layout">
+      <div class="board-section">
+        <header class="board-header">
+          <h1>The Immortal Game</h1>
+          <p class="players">Adolf Anderssen (White) vs Lionel Kieseritzky (Black)</p>
+        </header>
+        <div class="board-container" role="group" aria-label="Chessboard position">
+          <g-chess-board id="board" coordinates="outside"></g-chess-board>
+        </div>
+        <p id="move-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+        <pre class="fen-pre" tabindex="0" aria-label="Forsyth-Edwards Notation (FEN)"><code id="api-status" class="fen-display"></code></pre>
       </div>
+
+      <aside class="history-panel" aria-labelledby="moves-heading">
+        <div class="history-header">
+          <h2 id="moves-heading" tabindex="-1">Moves (PGN)</h2>
+          <div class="nav-controls" role="group" aria-label="Move navigation">
+            <button id="prev-move" type="button" class="nav-btn" aria-disabled="true">
+              <span aria-hidden="true">&#8592;</span>
+              <span class="visually-hidden">Previous move</span>
+            </button>
+            <button id="next-move" type="button" class="nav-btn" aria-disabled="false">
+              <span aria-hidden="true">&#8594;</span>
+              <span class="visually-hidden">Next move</span>
+            </button>
+          </div>
+        </div>
+        <button id="start-pos-btn" type="button" class="start-pos-btn active" aria-pressed="true">
+          Initial position
+        </button>
+        <ol id="moves-list" class="moves-list" role="list" aria-labelledby="moves-heading"></ol>
+      </aside>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
