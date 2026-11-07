@@ -26,7 +26,7 @@ impl King {
         position.is_case_attacked(&self.case, self.is_white)
     }
 
-    pub fn has_moves(&self, position: &Position) -> bool {
+    fn has_moves(&self, position: &Position) -> bool {
         position
             .get_pieces::<Piece>(self.is_white)
             .into_iter()
@@ -44,7 +44,7 @@ impl King {
         self.is_turn(position) && !self.is_in_check(position) && !self.has_moves(position)
     }
 
-    pub fn allowed_castling_moves(&self, position: &Position) -> Vec<PieceMove> {
+    fn allowed_castling_moves(&self, position: &Position) -> Vec<PieceMove> {
         if !self.is_turn(position) || !self.has_never_moved() || self.is_in_check(position) {
             return Vec::new();
         }

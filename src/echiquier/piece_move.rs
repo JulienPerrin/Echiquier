@@ -9,7 +9,7 @@ pub struct PieceMove {
 
 impl PieceMove {
     #[allow(dead_code)]
-    pub const fn new(right: i8, up: i8) -> Self {
+    const fn new(right: i8, up: i8) -> Self {
         PieceMove { right, up }
     }
 }

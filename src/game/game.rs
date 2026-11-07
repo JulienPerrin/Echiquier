@@ -136,7 +136,7 @@ fn clean_moves_text(text: &str) -> String {
 
 impl Game<'static> {
     #[allow(dead_code)]
-    pub fn default_game() -> Game<'static> {
+    fn default_game() -> Game<'static> {
         Game::new(INITIAL_POSITION)
     }
 
@@ -147,7 +147,7 @@ impl Game<'static> {
 }
 
 impl<'a> Game<'a> {
-    pub fn new(initial_position: Position<'a>) -> Game<'a> {
+    fn new(initial_position: Position<'a>) -> Game<'a> {
         Game {
             initial_position,
             positions: vec![initial_position],
@@ -155,14 +155,14 @@ impl<'a> Game<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
+    fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
         let mut game = Game::new(initial_position);
         game.play_text_moves(text)?;
         Some(game)
     }
 
     #[allow(dead_code)]
-    pub fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
+    fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
         let initial_len = self.positions.len();
         let cleaned = clean_moves_text(text);
         // TODO: Improve resilience for difficult cases with spaces inside moves like say "K x K   e4 x K"
@@ -186,7 +186,7 @@ impl<'a> Game<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn format_pgn(&self) -> String {
+    fn format_pgn(&self) -> String {
         let moves = self.format_moves();
         let mut result = String::new();
         for (i, m) in moves.iter().enumerate() {
@@ -203,12 +203,12 @@ impl<'a> Game<'a> {
         result
     }
 
-    pub fn current_position(&self) -> &Position<'a> {
+    fn current_position(&self) -> &Position<'a> {
         self.positions.last().unwrap_or(&self.initial_position)
     }
 
     #[allow(dead_code)]
-    pub fn play_move<T>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a>
+    fn play_move<T>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a>
     where
         T: Movable + Copy,
         Piece: From<T>,
@@ -217,7 +217,7 @@ impl<'a> Game<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn play_move_with_promotion<T>(
+    fn play_move_with_promotion<T>(
         &mut self,
         piece: &mut T,
         piece_move: PieceMove,

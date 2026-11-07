@@ -145,7 +145,7 @@ impl<'a> PositionChange<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn print(&self) -> String {
+    fn print(&self) -> String {
         let formatted = self.format();
         println!("{formatted}");
         formatted
@@ -251,17 +251,17 @@ impl<'a> Display for PositionChange<'a> {
 }
 
 #[allow(dead_code)]
-pub fn format_position_change(prev: &Position, next: &Position) -> String {
+fn format_position_change(prev: &Position, next: &Position) -> String {
     PositionChange::new(*prev, *next).format()
 }
 
 #[allow(dead_code)]
-pub fn print_position_change(prev: &Position, next: &Position) -> String {
+fn print_position_change(prev: &Position, next: &Position) -> String {
     PositionChange::new(*prev, *next).print()
 }
 
 #[allow(dead_code)]
-pub fn parse_position_change<'a>(
+fn parse_position_change<'a>(
     position: &Position<'a>,
     text: &str,
 ) -> Option<PositionChange<'a>> {

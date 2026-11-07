@@ -82,7 +82,7 @@ impl Echiquier {
         };
     }
 
-    pub fn exists_case(&self, rank: i8, file: i8) -> bool {
+    fn exists_case(&self, rank: i8, file: i8) -> bool {
         return rank >= 0 && file >= 0 && rank < 8 && file < 8;
     }
 

@@ -43,15 +43,15 @@ impl Pawn {
         }
     }
 
-    pub const fn way(&self) -> i8 {
+    const fn way(&self) -> i8 {
         if self.piece.is_white { 1 } else { -1 }
     }
 
-    pub fn is_promotion_rank(&self, case: &Case) -> bool {
+    fn is_promotion_rank(&self, case: &Case) -> bool {
         case.rank == if self.is_white { 7 } else { 0 }
     }
 
-    pub fn en_passant_capture(&self, position: &Position, right_value: i8) -> Option<Piece> {
+    fn en_passant_capture(&self, position: &Position, right_value: i8) -> Option<Piece> {
         let adjacent_piece = position.get_relative_piece(
             &self.case,
             PieceMove {
@@ -74,7 +74,7 @@ impl Pawn {
         }
     }
 
-    pub fn promote(&self, case: Case, piece_move: PieceMove, promotion: PromotionPiece) -> Piece {
+    fn promote(&self, case: Case, piece_move: PieceMove, promotion: PromotionPiece) -> Piece {
         let mut data = PieceData::new(case, self.is_white);
         data.last_move = Some(piece_move);
         match promotion {
