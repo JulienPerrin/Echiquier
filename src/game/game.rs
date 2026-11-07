@@ -95,15 +95,23 @@ pub struct Game<'a> {
     pub white: Option<String>,
     pub black: Option<String>,
     pub headers: Vec<(String, String)>,
+    pub result: Option<Result>,
 }
 
 #[allow(dead_code)]
 fn parse_pgn_headers(
     text: &str,
-) -> (Vec<(String, String)>, Option<String>, Option<String>, String) {
+) -> (
+    Vec<(String, String)>,
+    Option<String>,
+    Option<String>,
+    Option<Result>,
+    String,
+) {
     let mut headers = Vec::new();
     let mut white = None;
     let mut black = None;
+    let mut result = None;
     let mut moves_lines = Vec::new();
 
     for line in text.lines() {
@@ -117,6 +125,14 @@ fn parse_pgn_headers(
                     white = Some(val.to_string());
                 } else if key.eq_ignore_ascii_case("black") {
                     black = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("result") {
+                    if val == "1-0" {
+                        result = Some(Result::WhiteWin);
+                    } else if val == "0-1" {
+                        result = Some(Result::BlackWin);
+                    } else if val == "1/2-1/2" || val == "½-½" {
+                        result = Some(Result::Draw);
+                    }
                 }
                 headers.push((key.to_string(), val.to_string()));
             }
@@ -125,7 +141,58 @@ fn parse_pgn_headers(
         }
     }
 
-    (headers, white, black, moves_lines.join("\n"))
+    (headers, white, black, result, moves_lines.join("\n"))
+}
+
+#[allow(dead_code)]
+fn extract_trailing_result(text: &str) -> (String, Option<Result>, bool) {
+    let mut trimmed = text.trim();
+    let mut trailing_result = None;
+    let mut is_resignation = false;
+
+    let lower = trimmed.to_lowercase();
+    if lower.ends_with("white resigns") {
+        trailing_result = Some(Result::BlackWin);
+        trimmed = trimmed[..trimmed.len() - "white resigns".len()].trim_end();
+    } else if lower.ends_with("blancs abandonnent") {
+        trailing_result = Some(Result::BlackWin);
+        trimmed = trimmed[..trimmed.len() - "blancs abandonnent".len()].trim_end();
+    } else if lower.ends_with("black resigns") {
+        trailing_result = Some(Result::WhiteWin);
+        trimmed = trimmed[..trimmed.len() - "black resigns".len()].trim_end();
+    } else if lower.ends_with("noirs abandonnent") {
+        trailing_result = Some(Result::WhiteWin);
+        trimmed = trimmed[..trimmed.len() - "noirs abandonnent".len()].trim_end();
+    } else if lower.ends_with("resigns") {
+        is_resignation = true;
+        trimmed = trimmed[..trimmed.len() - "resigns".len()].trim_end();
+    } else if lower.ends_with("abandonne") {
+        is_resignation = true;
+        trimmed = trimmed[..trimmed.len() - "abandonne".len()].trim_end();
+    } else if lower.ends_with("abandon") {
+        is_resignation = true;
+        trimmed = trimmed[..trimmed.len() - "abandon".len()].trim_end();
+    } else if trimmed.ends_with("1-0") {
+        trailing_result = Some(Result::WhiteWin);
+        trimmed = trimmed[..trimmed.len() - "1-0".len()].trim_end();
+    } else if trimmed.ends_with("0-1") {
+        trailing_result = Some(Result::BlackWin);
+        trimmed = trimmed[..trimmed.len() - "0-1".len()].trim_end();
+    } else if trimmed.ends_with("1/2-1/2") {
+        trailing_result = Some(Result::Draw);
+        trimmed = trimmed[..trimmed.len() - "1/2-1/2".len()].trim_end();
+    } else if trimmed.ends_with("½-½") {
+        trailing_result = Some(Result::Draw);
+        trimmed = trimmed[..trimmed.len() - "½-½".len()].trim_end();
+    } else if trimmed.ends_with("0.5-0.5") {
+        trailing_result = Some(Result::Draw);
+        trimmed = trimmed[..trimmed.len() - "0.5-0.5".len()].trim_end();
+    } else if trimmed.ends_with('=') {
+        trailing_result = Some(Result::Draw);
+        trimmed = trimmed[..trimmed.len() - '='.len_utf8()].trim_end();
+    }
+
+    (trimmed.to_string(), trailing_result, is_resignation)
 }
 
 #[allow(dead_code)]
@@ -183,40 +250,50 @@ impl Game<'static> {
 
 impl<'a> Game<'a> {
     fn new(initial_position: Position<'a>) -> Game<'a> {
-        Game {
+        let mut game = Game {
             initial_position,
             positions: vec![initial_position],
             white: None,
             black: None,
             headers: Vec::new(),
-        }
+            result: None,
+        };
+        game.result = game.board_result();
+        game
     }
 
     #[allow(dead_code)]
     fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
-        let (headers, white, black, moves_text) = parse_pgn_headers(text);
+        let (headers, white, black, header_result, moves_text) = parse_pgn_headers(text);
         let mut game = Game::new(initial_position);
         game.headers = headers;
         game.white = white;
         game.black = black;
+        game.result = header_result;
         game.play_text_moves(&moves_text)?;
         Some(game)
     }
 
     #[allow(dead_code)]
     fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
-        let (headers, white, black, moves_text) = parse_pgn_headers(text);
+        let (headers, white, black, header_result, raw_moves_text) = parse_pgn_headers(text);
         if self.white.is_none() {
             self.white = white;
         }
         if self.black.is_none() {
             self.black = black;
         }
+        if self.result.is_none() {
+            self.result = header_result;
+        }
         for (k, v) in headers {
             if !self.headers.iter().any(|(existing_k, _)| existing_k == &k) {
                 self.headers.push((k, v));
             }
         }
+
+        let (moves_text, trailing_result, is_resignation) = extract_trailing_result(&raw_moves_text);
+
         let initial_len = self.positions.len();
         let cleaned = clean_moves_text(&moves_text);
         // TODO: Improve resilience for difficult cases with spaces inside moves like say "K x K   e4 x K"
@@ -229,6 +306,19 @@ impl<'a> Game<'a> {
                 return None;
             }
         }
+
+        if is_resignation {
+            if self.current_position().is_white_turn() {
+                self.result = Some(Result::BlackWin);
+            } else {
+                self.result = Some(Result::WhiteWin);
+            }
+        } else if trailing_result.is_some() {
+            self.result = trailing_result;
+        } else if self.result.is_none() {
+            self.result = self.board_result();
+        }
+
         Some(self.current_position())
     }
 
@@ -259,6 +349,19 @@ impl<'a> Game<'a> {
                 result.push(' ');
             }
             result.push_str(m);
+        }
+        if let Some(res) = self.game_result() {
+            let res_str = match res {
+                Result::WhiteWin => "1-0",
+                Result::BlackWin => "0-1",
+                Result::Draw => "1/2-1/2",
+            };
+            if moves.is_empty() {
+                result.push_str(res_str);
+            } else {
+                result.push(' ');
+                result.push_str(res_str);
+            }
         }
         result
     }
@@ -301,6 +404,9 @@ impl<'a> Game<'a> {
         });
         let next_pos = piece.move_piece(&current, piece_move, target_case, piece_taken, promotion);
         self.positions.push(next_pos);
+        if self.result.is_none() {
+            self.result = self.board_result();
+        }
         self.current_position()
     }
 
@@ -308,7 +414,7 @@ impl<'a> Game<'a> {
         self.game_result().is_some()
     }
 
-    pub fn game_result(&self) -> Option<Result> {
+    fn board_result(&self) -> Option<Result> {
         let current = self.current_position();
         let is_white_turn = current.is_white_turn();
         let king = current
@@ -327,6 +433,10 @@ impl<'a> Game<'a> {
             None
         }
     }
+
+    pub fn game_result(&self) -> Option<Result> {
+        self.result.or_else(|| self.board_result())
+    }
 }
 
 impl<'a> Display for Game<'a> {
@@ -341,6 +451,18 @@ impl<'a> Display for Game<'a> {
                 write!(f, "{turn}. {} {}", chunk[0], chunk[1])?;
             } else {
                 write!(f, "{turn}. {}", chunk[0])?;
+            }
+        }
+        if let Some(res) = self.game_result() {
+            let res_str = match res {
+                Result::WhiteWin => "1-0",
+                Result::BlackWin => "0-1",
+                Result::Draw => "1/2-1/2",
+            };
+            if moves.is_empty() {
+                write!(f, "{res_str}")?;
+            } else {
+                write!(f, " {res_str}")?;
             }
         }
         Ok(())
@@ -405,7 +527,7 @@ mod tests {
         let parsed_game =
             Game::from_default_text("1. f4 e5 2. fxe5 d5 3. exd6 Cc6 4. g4 Qh4#").unwrap();
         assert_eq!(
-            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4#",
+            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4# 0-1",
             parsed_game.to_string()
         );
     }
@@ -607,6 +729,7 @@ mod tests {
         );
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::WhiteWin), game.game_result());
+        assert_eq!(Some(Result::WhiteWin), game.result);
     }
 
     #[test]
@@ -832,10 +955,10 @@ mod tests {
         ];
         assert_eq!(expected_moves, game.format_moves());
 
-        let expected_pgn = "1. f4 e5 2. fxe5 d5 3. exd6 ♘c6 4. g4 ♕h4#";
+        let expected_pgn = "1. f4 e5 2. fxe5 d5 3. exd6 ♘c6 4. g4 ♕h4# 0-1";
         assert_eq!(expected_pgn, game.format_pgn());
         assert_eq!(
-            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4#",
+            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4# 0-1",
             game.to_string()
         );
 
@@ -881,6 +1004,7 @@ mod tests {
         assert_eq!(46, game.positions.len()); // initial position + 45 moves (23*2 - 1)
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::WhiteWin), game.game_result());
+        assert_eq!(Some(Result::WhiteWin), game.result);
     }
 
     #[test]
@@ -938,6 +1062,7 @@ mod tests {
         assert_eq!(83, game.positions.len()); // initial position + 82 half-moves
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::BlackWin), game.game_result());
+        assert_eq!(Some(Result::BlackWin), game.result);
 
         let pgn = game.format_pgn();
         assert!(pgn.contains("[White \"Donald Byrne\"]"));
@@ -949,5 +1074,117 @@ mod tests {
         assert_eq!(Some("Player 1"), continuing_game.white.as_deref());
         assert_eq!(Some("Player 2"), continuing_game.black.as_deref());
         assert_eq!(3, continuing_game.headers.len());
+    }
+
+    #[test]
+    fn test_game_result_stored_and_displayed() {
+        let pgn_header_result = Game::from_default_text("[Result \"1-0\"]\n1. e4")
+            .expect("header result should parse");
+        assert_eq!(Some(Result::WhiteWin), pgn_header_result.result);
+        assert_eq!("1. e4 1-0", pgn_header_result.to_string());
+        assert_eq!("[Result \"1-0\"]\n\n1. e4 1-0", pgn_header_result.format_pgn());
+
+        let pgn_header_black =
+            Game::from_default_text("[Result \"0-1\"]\n1. e4").expect("header 0-1");
+        assert_eq!(Some(Result::BlackWin), pgn_header_black.result);
+
+        let pgn_header_draw =
+            Game::from_default_text("[Result \"1/2-1/2\"]\n1. e4").expect("header 1/2");
+        assert_eq!(Some(Result::Draw), pgn_header_draw.result);
+
+        let pgn_header_glyph =
+            Game::from_default_text("[Result \"½-½\"]\n1. e4").expect("header ½-½");
+        assert_eq!(Some(Result::Draw), pgn_header_glyph.result);
+
+        let white_win_explicit = Game::from_default_text("1. e4 1-0").expect("1-0 text");
+        assert_eq!(Some(Result::WhiteWin), white_win_explicit.result);
+        assert_eq!("1. e4 1-0", white_win_explicit.format_pgn());
+
+        // Ongoing game
+        let ongoing = Game::from_default_text("1. e4").expect("ongoing should parse");
+        assert_eq!(None, ongoing.result);
+        assert_eq!("1. e4", ongoing.to_string());
+        assert_eq!("1. e4", ongoing.format_pgn());
+
+        // Finished game formats with result at the end
+        let white_win_game = Game::from_default_text("1. f4 e5 2. g4 Qh4#").expect("game parses");
+        assert_eq!(Some(Result::BlackWin), white_win_game.result);
+        assert_eq!(
+            "1. f4 e5\n2. g4 ♕h4# 0-1",
+            white_win_game.to_string()
+        );
+        assert_eq!(
+            "1. f4 e5 2. g4 ♕h4# 0-1",
+            white_win_game.format_pgn()
+        );
+    }
+
+    #[test]
+    fn test_pgn_equal_at_end_means_draw() {
+        let draw_game1 = Game::from_default_text("1. e4 e5 =").expect("draw = should parse");
+        assert_eq!(Some(Result::Draw), draw_game1.result);
+        assert_eq!("1. e4 e5 1/2-1/2", draw_game1.to_string());
+        assert_eq!("1. e4 e5 1/2-1/2", draw_game1.format_pgn());
+
+        let draw_game2 = Game::from_default_text("1. e4 e5\n  =  ").expect("draw = with spaces should parse");
+        assert_eq!(Some(Result::Draw), draw_game2.result);
+        assert_eq!("1. e4 e5 1/2-1/2", draw_game2.to_string());
+
+        let draw_half = Game::from_default_text("1. e4 e5 1/2-1/2").expect("1/2-1/2 should parse");
+        assert_eq!(Some(Result::Draw), draw_half.result);
+        assert_eq!("1. e4 e5 1/2-1/2", draw_half.to_string());
+
+        let draw_glyph = Game::from_default_text("1. e4 e5 ½-½").expect("½-½ should parse");
+        assert_eq!(Some(Result::Draw), draw_glyph.result);
+        assert_eq!("1. e4 e5 1/2-1/2", draw_glyph.to_string());
+
+        let draw_half_float = Game::from_default_text("1. e4 e5 0.5-0.5").expect("0.5-0.5 should parse");
+        assert_eq!(Some(Result::Draw), draw_half_float.result);
+        assert_eq!("1. e4 e5 1/2-1/2", draw_half_float.to_string());
+
+        // = not at the end should return None (not a valid move)
+        assert_eq!(None, Game::from_default_text("1. e4 = e5"));
+    }
+
+    #[test]
+    fn test_pgn_resignations() {
+        let white_resigns = Game::from_default_text("1. e4 e5 2. f4 White resigns")
+            .expect("White resigns should parse");
+        assert_eq!(Some(Result::BlackWin), white_resigns.result);
+        assert_eq!("1. e4 e5\n2. f4 0-1", white_resigns.to_string());
+
+        let black_resigns = Game::from_default_text("1. e4 e5 2. f4 Black resigns")
+            .expect("Black resigns should parse");
+        assert_eq!(Some(Result::WhiteWin), black_resigns.result);
+        assert_eq!("1. e4 e5\n2. f4 1-0", black_resigns.to_string());
+
+        let blancs_abandonnent = Game::from_default_text("1. e4 e5 2. f4 Blancs abandonnent")
+            .expect("Blancs abandonnent should parse");
+        assert_eq!(Some(Result::BlackWin), blancs_abandonnent.result);
+
+        let noirs_abandonnent = Game::from_default_text("1. e4 e5 2. f4 Noirs abandonnent")
+            .expect("Noirs abandonnent should parse");
+        assert_eq!(Some(Result::WhiteWin), noirs_abandonnent.result);
+
+        // Turn-based resignation: after 2. f4 it is Black's turn, so "resigns" means Black resigns
+        let turn_resigns_black = Game::from_default_text("1. e4 e5 2. f4 resigns")
+            .expect("resigns should parse");
+        assert_eq!(Some(Result::WhiteWin), turn_resigns_black.result);
+
+        // After 1. e4 it is Black's turn, so "abandon" means Black resigns -> WhiteWin
+        let turn_abandon_black = Game::from_default_text("1. e4 abandon")
+            .expect("abandon should parse");
+        assert_eq!(Some(Result::WhiteWin), turn_abandon_black.result);
+
+        // Before move 1 it is White's turn, so "resigns" means White resigns -> BlackWin
+        let turn_resigns_white = Game::from_default_text("resigns")
+            .expect("resigns on turn 1 should parse");
+        assert_eq!(Some(Result::BlackWin), turn_resigns_white.result);
+
+        let turn_abandonne_white = Game::from_default_text("abandonne")
+            .expect("abandonne should parse");
+        assert_eq!(Some(Result::BlackWin), turn_abandonne_white.result);
+        assert_eq!("0-1", turn_abandonne_white.to_string());
+        assert_eq!("0-1", turn_abandonne_white.format_pgn());
     }
 }

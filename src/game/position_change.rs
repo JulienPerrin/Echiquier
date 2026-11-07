@@ -59,13 +59,8 @@ impl<'a> PositionChange<'a> {
         let dest = moved_piece.case.algebraic();
         let origin_case = match moved_piece.last_move {
             Some(m) => {
-                let rev = PieceMove {
-                    right: -m.right,
-                    up: -m.up,
-                };
-                self.prev
-                    .echiquier
-                    .get_relative_case(&moved_piece.case, rev)
+                let rev = PieceMove { right: -m.right, up: -m.up };
+                self.prev.echiquier.get_relative_case(&moved_piece.case, rev)
             }
             None => (0..64).find_map(|i| match self.prev.pieces[i] {
                 Some(p)

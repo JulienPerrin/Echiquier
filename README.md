@@ -73,5 +73,7 @@ A chessboard written in RUST
   - [ ] support chess notation (FEN / Algebraic notation / PGN)
     - [x] Algebraic notation for moves with disambiguation, captures, check (`+`), checkmate (`#`), draw (`=`)
     - [x] Parse algebraic notation move text into a `PositionChange` struct with disambiguation and permissive capture support (ignoring annotations `!`, `?`, `+`, `#`)
-    - [ ] Handle `=` in notation (can mean either draw or draw offer / demand of draw), and support draws and resignations
-- [ ] Build chess engine / GUI (`macroquad`)
+    - [x] Handle `=` in notation (means draw at the very end of trimmed PGN), and support draws and resignations
+    - [ ] Complete PGN standard specification (<https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm>)
+- [ ] Build chess engine
+- [ ] Add a GUI
