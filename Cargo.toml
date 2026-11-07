@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["JulienPerrin <julien.perrin25@gmail.com>"]
 edition = "2024"
 
+[[bin]]
+name = "chessboard"
+path = "src-tauri/main.rs"
 
 [dependencies]
-macroquad = "0.4.15"

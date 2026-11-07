@@ -86,6 +86,8 @@ pub const INITIAL_POSITION: Position<'static> = Position {
         Some(Piece::Rook(Rook::new(Case { rank: 7, file: 7 }, false))),
     ],
     last_moved_piece: None,
+    halfmove_clock: 0,
+    fullmove_number: 1,
 };
 
 #[derive(Clone, Debug, PartialEq)]

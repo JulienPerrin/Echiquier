@@ -14,6 +14,8 @@ pub struct Position<'a> {
     pub echiquier: &'a Echiquier,
     pub pieces: [Option<Piece>; 64],
     pub last_moved_piece: Option<Piece>,
+    pub halfmove_clock: u16,
+    pub fullmove_number: u16,
 }
 
 impl<'a> Position<'a> {
@@ -23,6 +25,8 @@ impl<'a> Position<'a> {
             echiquier,
             pieces: [None; 64],
             last_moved_piece: None,
+            halfmove_clock: 0,
+            fullmove_number: 1,
         }
     }
 
@@ -79,6 +83,62 @@ impl<'a> Position<'a> {
 
     pub fn is_turn(&self, is_white: bool) -> bool {
         self.is_white_turn() == is_white
+    }
+
+    fn can_castle(&self, rank: u8, rook_file: u8, is_white: bool) -> bool {
+        matches!(self.get_piece(&self.echiquier.get_case(rank, 4)), Some(Piece::King(k)) if k.is_white == is_white && k.last_move.is_none())
+            && matches!(self.get_piece(&self.echiquier.get_case(rank, rook_file)), Some(Piece::Rook(r)) if r.is_white == is_white && r.last_move.is_none())
+    }
+
+    pub fn get_fen(&self) -> String {
+        let mut ranks = Vec::with_capacity(8);
+        for rank in (0..8).rev() {
+            let mut rank_str = String::new();
+            let mut empty_count = 0u8;
+            for file in 0..8 {
+                match self.pieces[rank * 8 + file] {
+                    Some(piece) => {
+                        if empty_count > 0 {
+                            rank_str.push((b'0' + empty_count) as char);
+                            empty_count = 0;
+                        }
+                        let ch = match piece {
+                            Piece::Pawn(_) => 'p',
+                            Piece::Knight(_) => 'n',
+                            Piece::Bishop(_) => 'b',
+                            Piece::Rook(_) => 'r',
+                            Piece::Queen(_) => 'q',
+                            Piece::King(_) => 'k',
+                        };
+                        rank_str.push(if piece.is_white { ch.to_ascii_uppercase() } else { ch });
+                    }
+                    None => empty_count += 1,
+                }
+            }
+            if empty_count > 0 {
+                rank_str.push((b'0' + empty_count) as char);
+            }
+            ranks.push(rank_str);
+        }
+        let placement = ranks.join("/");
+        let active_color = if self.is_white_turn() { "w" } else { "b" };
+        let mut castling = String::new();
+        for (rank, file, is_white, symbol) in [(0, 7, true, 'K'), (0, 0, true, 'Q'), (7, 7, false, 'k'), (7, 0, false, 'q')] {
+            if self.can_castle(rank, file, is_white) {
+                castling.push(symbol);
+            }
+        }
+        if castling.is_empty() {
+            castling.push('-');
+        }
+        let en_passant = match self.last_moved_piece {
+            Some(Piece::Pawn(p)) if p.last_move.is_some_and(|m| m.up.abs() == 2) => {
+                let m = p.last_move.unwrap();
+                Case { rank: (p.case.rank as i8 - m.up / 2) as u8, file: p.case.file }.algebraic()
+            }
+            _ => String::from("-"),
+        };
+        format!("{placement} {active_color} {castling} {en_passant} {} {}", self.halfmove_clock, self.fullmove_number)
     }
 }
 
@@ -363,5 +423,66 @@ mod tests {
 
         // 4. Neither occupied nor attacked: h1
         assert!(!position.is_case_occupied_or_attacked(&h1, true));
+    }
+
+    #[test]
+    fn get_fen_follows_pgn_spec_chapter_16_1() {
+        use crate::game::game::INITIAL_POSITION;
+        use crate::pieces::movable::Movable;
+
+        // 16.1.4 Example 1: Starting position
+        let pos0 = INITIAL_POSITION;
+        assert_eq!(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            pos0.get_fen()
+        );
+
+        // 16.1.4 Example 2: After 1. e4
+        let e2 = pos0.echiquier.get_case(1, 4);
+        let e4 = pos0.echiquier.get_case(3, 4);
+        let mut white_pawn_e2 = Pawn::try_from(pos0.get_piece(&e2).unwrap()).unwrap();
+        let pos1 = white_pawn_e2.move_piece(&pos0, PieceMove { right: 0, up: 2 }, e4, None, None);
+        assert_eq!(
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+            pos1.get_fen()
+        );
+
+        // 16.1.4 Example 3: After 1... c5
+        let c7 = pos1.echiquier.get_case(6, 2);
+        let c5 = pos1.echiquier.get_case(4, 2);
+        let mut black_pawn_c7 = Pawn::try_from(pos1.get_piece(&c7).unwrap()).unwrap();
+        let pos2 = black_pawn_c7.move_piece(&pos1, PieceMove { right: 0, up: -2 }, c5, None, None);
+        assert_eq!(
+            "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",
+            pos2.get_fen()
+        );
+
+        // 16.1.4 Example 4: After 2. Nf3
+        let g1 = pos2.echiquier.get_case(0, 6);
+        let f3 = pos2.echiquier.get_case(2, 5);
+        let mut white_knight_g1 = Knight::try_from(pos2.get_piece(&g1).unwrap()).unwrap();
+        let pos3 =
+            white_knight_g1.move_piece(&pos2, PieceMove { right: -1, up: 2 }, f3, None, None);
+        assert_eq!(
+            "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+            pos3.get_fen()
+        );
+
+        // Empty board has '-' for castling and en-passant
+        let echiquier = Echiquier::new();
+        let empty = Position::new(&echiquier);
+        assert_eq!("8/8/8/8/8/8/8/8 w - - 0 1", empty.get_fen());
+
+        // Endgame position: 4k3/8/8/8/8/8/4P3/4K3 w - - 5 39
+        let mut endgame = Position::new(&echiquier);
+        endgame.set_piece(King::new(echiquier.get_case(7, 4), false));
+        endgame.set_piece(Pawn::new(echiquier.get_case(1, 4), true));
+        endgame.set_piece(King::new(echiquier.get_case(0, 4), true));
+        endgame.halfmove_clock = 5;
+        endgame.fullmove_number = 39;
+        assert_eq!(
+            "4k3/8/8/8/8/8/4P3/4K3 w - - 5 39",
+            endgame.get_fen()
+        );
     }
 }

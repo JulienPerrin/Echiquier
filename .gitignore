@@ -2,3 +2,5 @@
 **/*.rs.bk
 Cargo.lock
 .workshop.lock
+node_modules/
+dist/

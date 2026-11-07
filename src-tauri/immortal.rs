@@ -1,8 +1,4 @@
-mod echiquier;
-mod game;
-mod pieces;
-
-use game::game::Game;
+use crate::game::game::Game;
 
 pub const IMMORTAL_GAME: &str = "\
 [White \"Adolf Anderssen\"]
@@ -32,11 +28,12 @@ pub const IMMORTAL_GAME: &str = "\
 22. Df6+ Cxf6
 23. Fe7#";
 
+#[allow(dead_code)]
 fn main() {
     build_chessboard();
 }
 
-fn build_chessboard() {
+pub fn build_chessboard() {
     let game =
         Game::from_default_text(IMMORTAL_GAME).expect("Failed to parse and play the Immortal Game");
 
