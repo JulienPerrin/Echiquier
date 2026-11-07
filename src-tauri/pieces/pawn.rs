@@ -456,9 +456,11 @@ mod tests {
             black_pawn.move_piece(&position, PieceMove { right: 0, up: -1 }, d5, None, None);
 
         assert!(white_pawn.allowed_captures(&after_d5).is_empty());
-        assert!(!white_pawn
-            .allowed_moves(&after_d5)
-            .contains(&PieceMove { right: -1, up: 1 }));
+        assert!(
+            !white_pawn
+                .allowed_moves(&after_d5)
+                .contains(&PieceMove { right: -1, up: 1 })
+        );
 
         // 2. Black pawn on d4, White pawn on e3 moves 1 square to e4
         let d4 = echiquier.get_case(3, 3);
@@ -475,13 +477,14 @@ mod tests {
         pos2.set_piece(white_pawn2);
         pos2.last_moved_piece = Some(Piece::from(black_pawn2));
 
-        let after_e4 =
-            white_pawn2.move_piece(&pos2, PieceMove { right: 0, up: 1 }, e4, None, None);
+        let after_e4 = white_pawn2.move_piece(&pos2, PieceMove { right: 0, up: 1 }, e4, None, None);
 
         assert!(black_pawn2.allowed_captures(&after_e4).is_empty());
-        assert!(!black_pawn2
-            .allowed_moves(&after_e4)
-            .contains(&PieceMove { right: 1, up: -1 }));
+        assert!(
+            !black_pawn2
+                .allowed_moves(&after_e4)
+                .contains(&PieceMove { right: 1, up: -1 })
+        );
     }
 
     #[test]

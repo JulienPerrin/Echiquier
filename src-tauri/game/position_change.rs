@@ -59,8 +59,9 @@ impl<'a> PositionChange<'a> {
         let dest = moved_piece.case.algebraic();
         let origin_case = match moved_piece.last_move {
             Some(m) => {
-                let rev = PieceMove { right: -m.right, up: -m.up };
-                self.prev.echiquier.get_relative_case(&moved_piece.case, rev)
+                let rev = PieceMove::new(-m.right, -m.up);
+                let eq = self.prev.echiquier;
+                eq.get_relative_case(&moved_piece.case, rev)
             }
             None => (0..64).find_map(|i| match self.prev.pieces[i] {
                 Some(p)
@@ -911,17 +912,31 @@ mod tests {
 
         let g1 = echiquier.get_case(0, 6);
         let f1 = echiquier.get_case(0, 5);
-        assert!(matches!(change_kingside_o.next.get_piece(&g1), Some(Piece::King(_))));
-        assert!(matches!(change_kingside_o.next.get_piece(&f1), Some(Piece::Rook(_))));
+        assert!(matches!(
+            change_kingside_o.next.get_piece(&g1),
+            Some(Piece::King(_))
+        ));
+        assert!(matches!(
+            change_kingside_o.next.get_piece(&f1),
+            Some(Piece::Rook(_))
+        ));
 
-        let change_queenside_o = PositionChange::from_text(&pos, "O-O-O").expect("O-O-O should parse");
-        let change_queenside_0 = PositionChange::from_text(&pos, "0-0-0").expect("0-0-0 should parse");
+        let change_queenside_o =
+            PositionChange::from_text(&pos, "O-O-O").expect("O-O-O should parse");
+        let change_queenside_0 =
+            PositionChange::from_text(&pos, "0-0-0").expect("0-0-0 should parse");
         assert_eq!(change_queenside_o, change_queenside_0);
 
         let c1 = echiquier.get_case(0, 2);
         let d1 = echiquier.get_case(0, 3);
-        assert!(matches!(change_queenside_o.next.get_piece(&c1), Some(Piece::King(_))));
-        assert!(matches!(change_queenside_o.next.get_piece(&d1), Some(Piece::Rook(_))));
+        assert!(matches!(
+            change_queenside_o.next.get_piece(&c1),
+            Some(Piece::King(_))
+        ));
+        assert!(matches!(
+            change_queenside_o.next.get_piece(&d1),
+            Some(Piece::Rook(_))
+        ));
 
         assert_eq!("O-O", change_kingside_o.format());
         assert_eq!("O-O-O", change_queenside_o.format());

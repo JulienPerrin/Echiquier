@@ -184,7 +184,12 @@ pub trait Movable: DerefMut<Target = PieceData> + Display {
         next_position.set_piece(moved_piece);
         self.after_move(&mut next_position, piece_move);
         next_position.last_moved_piece = Some(moved_piece);
-        next_position.halfmove_clock = if piece_taken.is_some() || matches!(Piece::from(*self), Piece::Pawn(_)) { 0 } else { position.halfmove_clock + 1 };
+        next_position.halfmove_clock =
+            if piece_taken.is_some() || matches!(Piece::from(*self), Piece::Pawn(_)) {
+                0
+            } else {
+                position.halfmove_clock + 1
+            };
         if !self.is_white {
             next_position.fullmove_number = position.fullmove_number + 1;
         }
@@ -449,7 +454,8 @@ mod tests {
         let mut pawn = Pawn::new(e7, true);
         position.set_piece(pawn);
 
-        let next_position = pawn.move_piece(&position, PieceMove { right: 0, up: 1 }, e8, None, None);
+        let next_position =
+            pawn.move_piece(&position, PieceMove { right: 0, up: 1 }, e8, None, None);
         let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
         assert!(matches!(piece_at_e8, Piece::Pawn(_)));
     }

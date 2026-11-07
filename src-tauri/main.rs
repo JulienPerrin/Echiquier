@@ -40,7 +40,10 @@ fn run_with_args(cmd: Option<&str>, arg: Option<&str>) {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    run_with_args(args.first().map(String::as_str), args.get(1).map(String::as_str));
+    run_with_args(
+        args.first().map(String::as_str),
+        args.get(1).map(String::as_str),
+    );
 }
 
 #[cfg(test)]
@@ -87,10 +90,7 @@ mod tests {
         assert_eq!(immortal_fen(1), handle_cli_command("fen", Some("1")));
         assert_eq!(None, handle_cli_command("fen", Some("invalid")));
         assert_eq!(None, handle_cli_command("fen", None));
-        assert_eq!(
-            Some(moves.join("\n")),
-            handle_cli_command("moves", None)
-        );
+        assert_eq!(Some(moves.join("\n")), handle_cli_command("moves", None));
         assert_eq!(None, handle_cli_command("unknown", None));
         run_with_args(Some("moves"), None);
     }

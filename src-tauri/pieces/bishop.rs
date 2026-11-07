@@ -117,8 +117,13 @@ mod tests {
                 .contains(&PieceMove { right: 3, up: 3 })
         );
 
-        let next_position =
-            white_bishop.move_piece(&position, capture_move, e3, Some(black_pawn_e3.into()), None);
+        let next_position = white_bishop.move_piece(
+            &position,
+            capture_move,
+            e3,
+            Some(black_pawn_e3.into()),
+            None,
+        );
         assert_eq!(e3, white_bishop.case);
         assert_eq!(
             Some(Piece::from(white_bishop)),

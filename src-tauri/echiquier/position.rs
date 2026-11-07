@@ -58,10 +58,14 @@ impl<'a> Position<'a> {
     pub fn is_case_attacked(&self, case: &Case, is_white: bool) -> bool {
         let mut test_pos = *self;
         test_pos.set_piece(King::new(*case, is_white));
-        test_pos.get_pieces::<Piece>(!is_white) 
-            .into_iter()
-            .flat_map(|p| p.candidate_captures(&test_pos))
-            .any(|(_, target)| target.case == *case)
+        for p in test_pos.get_pieces::<Piece>(!is_white) {
+            for (_, target) in p.candidate_captures(&test_pos) {
+                if target.case == *case {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     pub fn is_case_occupied_or_attacked(&self, case: &Case, is_white: bool) -> bool {
@@ -110,7 +114,11 @@ impl<'a> Position<'a> {
                             Piece::Queen(_) => 'q',
                             Piece::King(_) => 'k',
                         };
-                        rank_str.push(if piece.is_white { ch.to_ascii_uppercase() } else { ch });
+                        rank_str.push(if piece.is_white {
+                            ch.to_ascii_uppercase()
+                        } else {
+                            ch
+                        });
                     }
                     None => empty_count += 1,
                 }
@@ -123,7 +131,12 @@ impl<'a> Position<'a> {
         let placement = ranks.join("/");
         let active_color = if self.is_white_turn() { "w" } else { "b" };
         let mut castling = String::new();
-        for (rank, file, is_white, symbol) in [(0, 7, true, 'K'), (0, 0, true, 'Q'), (7, 7, false, 'k'), (7, 0, false, 'q')] {
+        for (rank, file, is_white, symbol) in [
+            (0, 7, true, 'K'),
+            (0, 0, true, 'Q'),
+            (7, 7, false, 'k'),
+            (7, 0, false, 'q'),
+        ] {
             if self.can_castle(rank, file, is_white) {
                 castling.push(symbol);
             }
@@ -134,11 +147,16 @@ impl<'a> Position<'a> {
         let en_passant = match self.last_moved_piece {
             Some(Piece::Pawn(p)) if p.last_move.is_some_and(|m| m.up.abs() == 2) => {
                 let m = p.last_move.unwrap();
-                Case { rank: (p.case.rank as i8 - m.up / 2) as u8, file: p.case.file }.algebraic()
+                Case {
+                    rank: (p.case.rank as i8 - m.up / 2) as u8,
+                    file: p.case.file,
+                }
+                .algebraic()
             }
             _ => String::from("-"),
         };
-        format!("{placement} {active_color} {castling} {en_passant} {} {}", self.halfmove_clock, self.fullmove_number)
+        let (hm, fm) = (self.halfmove_clock, self.fullmove_number);
+        format!("{placement} {active_color} {castling} {en_passant} {hm} {fm}")
     }
 }
 
@@ -480,9 +498,6 @@ mod tests {
         endgame.set_piece(King::new(echiquier.get_case(0, 4), true));
         endgame.halfmove_clock = 5;
         endgame.fullmove_number = 39;
-        assert_eq!(
-            "4k3/8/8/8/8/8/4P3/4K3 w - - 5 39",
-            endgame.get_fen()
-        );
+        assert_eq!("4k3/8/8/8/8/8/4P3/4K3 w - - 5 39", endgame.get_fen());
     }
 }

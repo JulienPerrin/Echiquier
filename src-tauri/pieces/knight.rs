@@ -128,8 +128,13 @@ mod tests {
         );
         assert!(white_knight.is_capture_allowed(&position, capture_move, black_pawn_c3.into()));
 
-        let next_position =
-            white_knight.move_piece(&position, capture_move, c3, Some(black_pawn_c3.into()), None);
+        let next_position = white_knight.move_piece(
+            &position,
+            capture_move,
+            c3,
+            Some(black_pawn_c3.into()),
+            None,
+        );
         assert_eq!(c3, white_knight.case);
         assert_eq!(
             Some(Piece::from(white_knight)),

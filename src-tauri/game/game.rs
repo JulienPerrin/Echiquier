@@ -294,10 +294,10 @@ impl<'a> Game<'a> {
             }
         }
 
-        let (moves_text, trailing_result, is_resignation) = extract_trailing_result(&raw_moves_text);
+        let (moves, trailing_result, is_resignation) = extract_trailing_result(&raw_moves_text);
 
         let initial_len = self.positions.len();
-        let cleaned = clean_moves_text(&moves_text);
+        let cleaned = clean_moves_text(&moves);
         // TODO: Improve resilience for difficult cases with spaces inside moves like say "K x K   e4 x K"
         // For now, whitespace separates individual moves.
         for token in cleaned.split_whitespace() {
@@ -1057,8 +1057,8 @@ mod tests {
 40. Kb1 Nc3+
 41. Kc1 Rc2# 0-1";
 
-        let game = Game::from_default_text(byrne_fischer_pgn)
-            .expect("game of the century should parse");
+        let game =
+            Game::from_default_text(byrne_fischer_pgn).expect("game of the century should parse");
         assert_eq!(Some("Donald Byrne"), game.white.as_deref());
         assert_eq!(Some("Robert James Fischer"), game.black.as_deref());
         assert_eq!(83, game.positions.len()); // initial position + 82 half-moves
@@ -1080,11 +1080,14 @@ mod tests {
 
     #[test]
     fn test_game_result_stored_and_displayed() {
-        let pgn_header_result = Game::from_default_text("[Result \"1-0\"]\n1. e4")
-            .expect("header result should parse");
+        let pgn_header_result =
+            Game::from_default_text("[Result \"1-0\"]\n1. e4").expect("header result should parse");
         assert_eq!(Some(Result::WhiteWin), pgn_header_result.result);
         assert_eq!("1. e4 1-0", pgn_header_result.to_string());
-        assert_eq!("[Result \"1-0\"]\n\n1. e4 1-0", pgn_header_result.format_pgn());
+        assert_eq!(
+            "[Result \"1-0\"]\n\n1. e4 1-0",
+            pgn_header_result.format_pgn()
+        );
 
         let pgn_header_black =
             Game::from_default_text("[Result \"0-1\"]\n1. e4").expect("header 0-1");
@@ -1111,14 +1114,8 @@ mod tests {
         // Finished game formats with result at the end
         let white_win_game = Game::from_default_text("1. f4 e5 2. g4 Qh4#").expect("game parses");
         assert_eq!(Some(Result::BlackWin), white_win_game.result);
-        assert_eq!(
-            "1. f4 e5\n2. g4 ♕h4# 0-1",
-            white_win_game.to_string()
-        );
-        assert_eq!(
-            "1. f4 e5 2. g4 ♕h4# 0-1",
-            white_win_game.format_pgn()
-        );
+        assert_eq!("1. f4 e5\n2. g4 ♕h4# 0-1", white_win_game.to_string());
+        assert_eq!("1. f4 e5 2. g4 ♕h4# 0-1", white_win_game.format_pgn());
     }
 
     #[test]
@@ -1128,7 +1125,8 @@ mod tests {
         assert_eq!("1. e4 e5 1/2-1/2", draw_game1.to_string());
         assert_eq!("1. e4 e5 1/2-1/2", draw_game1.format_pgn());
 
-        let draw_game2 = Game::from_default_text("1. e4 e5\n  =  ").expect("draw = with spaces should parse");
+        let draw_game2 =
+            Game::from_default_text("1. e4 e5\n  =  ").expect("draw = with spaces should parse");
         assert_eq!(Some(Result::Draw), draw_game2.result);
         assert_eq!("1. e4 e5 1/2-1/2", draw_game2.to_string());
 
@@ -1140,7 +1138,8 @@ mod tests {
         assert_eq!(Some(Result::Draw), draw_glyph.result);
         assert_eq!("1. e4 e5 1/2-1/2", draw_glyph.to_string());
 
-        let draw_half_float = Game::from_default_text("1. e4 e5 0.5-0.5").expect("0.5-0.5 should parse");
+        let draw_half_float =
+            Game::from_default_text("1. e4 e5 0.5-0.5").expect("0.5-0.5 should parse");
         assert_eq!(Some(Result::Draw), draw_half_float.result);
         assert_eq!("1. e4 e5 1/2-1/2", draw_half_float.to_string());
 
@@ -1169,22 +1168,22 @@ mod tests {
         assert_eq!(Some(Result::WhiteWin), noirs_abandonnent.result);
 
         // Turn-based resignation: after 2. f4 it is Black's turn, so "resigns" means Black resigns
-        let turn_resigns_black = Game::from_default_text("1. e4 e5 2. f4 resigns")
-            .expect("resigns should parse");
+        let turn_resigns_black =
+            Game::from_default_text("1. e4 e5 2. f4 resigns").expect("resigns should parse");
         assert_eq!(Some(Result::WhiteWin), turn_resigns_black.result);
 
         // After 1. e4 it is Black's turn, so "abandon" means Black resigns -> WhiteWin
-        let turn_abandon_black = Game::from_default_text("1. e4 abandon")
-            .expect("abandon should parse");
+        let turn_abandon_black =
+            Game::from_default_text("1. e4 abandon").expect("abandon should parse");
         assert_eq!(Some(Result::WhiteWin), turn_abandon_black.result);
 
         // Before move 1 it is White's turn, so "resigns" means White resigns -> BlackWin
-        let turn_resigns_white = Game::from_default_text("resigns")
-            .expect("resigns on turn 1 should parse");
+        let turn_resigns_white =
+            Game::from_default_text("resigns").expect("resigns on turn 1 should parse");
         assert_eq!(Some(Result::BlackWin), turn_resigns_white.result);
 
-        let turn_abandonne_white = Game::from_default_text("abandonne")
-            .expect("abandonne should parse");
+        let turn_abandonne_white =
+            Game::from_default_text("abandonne").expect("abandonne should parse");
         assert_eq!(Some(Result::BlackWin), turn_abandonne_white.result);
         assert_eq!("0-1", turn_abandonne_white.to_string());
         assert_eq!("0-1", turn_abandonne_white.format_pgn());

@@ -722,8 +722,7 @@ mod tests {
         pos1.set_piece(white_king);
         pos1.set_piece(rook_h1);
 
-        let next_pos1 =
-            white_king.move_piece(&pos1, PieceMove { right: 2, up: 0 }, g1, None, None);
+        let next_pos1 = white_king.move_piece(&pos1, PieceMove { right: 2, up: 0 }, g1, None, None);
         assert_eq!(None, next_pos1.get_piece(&e1));
         assert_eq!(None, next_pos1.get_piece(&h1));
         assert_eq!(Some(Piece::from(white_king)), next_pos1.get_piece(&g1));
@@ -765,8 +764,7 @@ mod tests {
         pos3.set_piece(rook_h8);
         pos3.last_moved_piece = Some(Piece::from(white_king));
 
-        let next_pos3 =
-            black_king.move_piece(&pos3, PieceMove { right: 2, up: 0 }, g8, None, None);
+        let next_pos3 = black_king.move_piece(&pos3, PieceMove { right: 2, up: 0 }, g8, None, None);
         assert_eq!(None, next_pos3.get_piece(&e8));
         assert_eq!(None, next_pos3.get_piece(&h8));
         assert_eq!(Some(Piece::from(black_king)), next_pos3.get_piece(&g8));

@@ -4,3 +4,4 @@ Cargo.lock
 .workshop.lock
 node_modules/
 dist/
+tarpaulin-report.html

@@ -121,8 +121,13 @@ mod tests {
                 .contains(&PieceMove { right: 0, up: 3 })
         );
 
-        let next_position =
-            white_rook.move_piece(&position, capture_move, a3, Some(black_pawn_a3.into()), None);
+        let next_position = white_rook.move_piece(
+            &position,
+            capture_move,
+            a3,
+            Some(black_pawn_a3.into()),
+            None,
+        );
         assert_eq!(a3, white_rook.case);
         assert_eq!(Some(Piece::from(white_rook)), next_position.get_piece(&a3));
         assert_eq!(None, next_position.get_piece(&a1));
