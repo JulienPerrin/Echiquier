@@ -4,6 +4,7 @@ use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::pieces::king::King;
+use crate::pieces::movable::Movable;
 use crate::pieces::piece::Piece;
 
 #[allow(dead_code)]
@@ -58,8 +59,13 @@ impl<'a> PositionChange<'a> {
         let dest = moved_piece.case.algebraic();
         let origin_case = match moved_piece.last_move {
             Some(m) => {
-                let rev = PieceMove { right: -m.right, up: -m.up };
-                self.prev.echiquier.get_relative_case(&moved_piece.case, rev)
+                let rev = PieceMove {
+                    right: -m.right,
+                    up: -m.up,
+                };
+                self.prev
+                    .echiquier
+                    .get_relative_case(&moved_piece.case, rev)
             }
             None => (0..64).find_map(|i| match self.prev.pieces[i] {
                 Some(p)
@@ -116,13 +122,26 @@ impl<'a> PositionChange<'a> {
             Some(piece) => format!("x{piece}"),
         };
 
-        let base = match moved_piece {
-            Piece::Pawn(_) if captured_piece.is_some() => match origin_case {
-                Some(origin) => format!("{}{capture_str}{dest}", (b'a' + origin.file) as char),
-                None => format!("{disambiguation}{capture_str}{dest}"),
-            },
-            Piece::Pawn(_) => format!("{disambiguation}{dest}"),
-            _ => format!("{moved_piece}{disambiguation}{capture_str}{dest}"),
+        let is_kingside_castling = matches!(moved_piece, Piece::King(_))
+            && origin_case == Some(self.prev.echiquier.get_case(moved_piece.case.rank, 4))
+            && moved_piece.case.file == 6;
+        let is_queenside_castling = matches!(moved_piece, Piece::King(_))
+            && origin_case == Some(self.prev.echiquier.get_case(moved_piece.case.rank, 4))
+            && moved_piece.case.file == 2;
+
+        let base = if is_kingside_castling {
+            "O-O".to_string()
+        } else if is_queenside_castling {
+            "O-O-O".to_string()
+        } else {
+            match moved_piece {
+                Piece::Pawn(_) if captured_piece.is_some() => match origin_case {
+                    Some(origin) => format!("{}{capture_str}{dest}", (b'a' + origin.file) as char),
+                    None => format!("{disambiguation}{capture_str}{dest}"),
+                },
+                Piece::Pawn(_) => format!("{disambiguation}{dest}"),
+                _ => format!("{moved_piece}{disambiguation}{capture_str}{dest}"),
+            }
         };
 
         let kings = self.next.get_pieces::<King>(!moved_piece.is_white);
@@ -155,6 +174,36 @@ impl<'a> PositionChange<'a> {
     pub fn from_text(position: &Position<'a>, text: &str) -> Option<Self> {
         let cleaned = text.trim_end_matches(['!', '?', '+', '#', '=']);
         if cleaned.is_empty() {
+            return None;
+        }
+
+        if cleaned == "O-O" || cleaned == "0-0" {
+            let is_white = position.is_white_turn();
+            let rank = if is_white { 0 } else { 7 };
+            let king_case = position.echiquier.get_case(rank, 4);
+            if let Some(Piece::King(mut king)) = position.get_piece(&king_case) {
+                let piece_move = PieceMove { right: 2, up: 0 };
+                if king.allowed_moves(position).contains(&piece_move) {
+                    let target_case = position.echiquier.get_case(rank, 6);
+                    let next = king.move_piece(position, piece_move, target_case, None, None);
+                    return Some(PositionChange::new(*position, next));
+                }
+            }
+            return None;
+        }
+
+        if cleaned == "O-O-O" || cleaned == "0-0-0" {
+            let is_white = position.is_white_turn();
+            let rank = if is_white { 0 } else { 7 };
+            let king_case = position.echiquier.get_case(rank, 4);
+            if let Some(Piece::King(mut king)) = position.get_piece(&king_case) {
+                let piece_move = PieceMove { right: -2, up: 0 };
+                if king.allowed_moves(position).contains(&piece_move) {
+                    let target_case = position.echiquier.get_case(rank, 2);
+                    let next = king.move_piece(position, piece_move, target_case, None, None);
+                    return Some(PositionChange::new(*position, next));
+                }
+            }
             return None;
         }
 
@@ -234,6 +283,14 @@ impl<'a> PositionChange<'a> {
             }
         }
 
+        if candidates.len() > 1 && piece_symbol == Some('R') {
+            candidates.retain(|(p, _, _, _)| matches!(p, Piece::Rook(_)));
+        }
+
+        if candidates.len() > 1 && piece_symbol == Some('K') {
+            candidates.retain(|(p, _, _, _)| matches!(p, Piece::King(_)));
+        }
+
         if candidates.len() != 1 {
             return None;
         }
@@ -261,10 +318,7 @@ fn print_position_change(prev: &Position, next: &Position) -> String {
 }
 
 #[allow(dead_code)]
-fn parse_position_change<'a>(
-    position: &Position<'a>,
-    text: &str,
-) -> Option<PositionChange<'a>> {
+fn parse_position_change<'a>(position: &Position<'a>, text: &str) -> Option<PositionChange<'a>> {
     PositionChange::from_text(position, text)
 }
 
@@ -843,5 +897,42 @@ mod tests {
         let mut pos_ambiguous = pos;
         pos_ambiguous.set_piece(black_knight2); // c4 knight can take e5 or d6 (2 knight captures)
         assert_eq!(None, PositionChange::from_text(&pos_ambiguous, "KxK"));
+    }
+
+    #[test]
+    fn parse_castling_moves_kingside_and_queenside() {
+        let echiquier = Echiquier::new();
+        let mut pos = Position::new(&echiquier);
+        let e1 = echiquier.get_case(0, 4);
+        let h1 = echiquier.get_case(0, 7);
+        let a1 = echiquier.get_case(0, 0);
+        pos.set_piece(King::new(e1, true));
+        pos.set_piece(Rook::new(h1, true));
+        pos.set_piece(Rook::new(a1, true));
+
+        let change_kingside_o = PositionChange::from_text(&pos, "O-O").expect("O-O should parse");
+        let change_kingside_0 = PositionChange::from_text(&pos, "0-0").expect("0-0 should parse");
+        assert_eq!(change_kingside_o, change_kingside_0);
+
+        let g1 = echiquier.get_case(0, 6);
+        let f1 = echiquier.get_case(0, 5);
+        assert!(matches!(change_kingside_o.next.get_piece(&g1), Some(Piece::King(_))));
+        assert!(matches!(change_kingside_o.next.get_piece(&f1), Some(Piece::Rook(_))));
+
+        let change_queenside_o = PositionChange::from_text(&pos, "O-O-O").expect("O-O-O should parse");
+        let change_queenside_0 = PositionChange::from_text(&pos, "0-0-0").expect("0-0-0 should parse");
+        assert_eq!(change_queenside_o, change_queenside_0);
+
+        let c1 = echiquier.get_case(0, 2);
+        let d1 = echiquier.get_case(0, 3);
+        assert!(matches!(change_queenside_o.next.get_piece(&c1), Some(Piece::King(_))));
+        assert!(matches!(change_queenside_o.next.get_piece(&d1), Some(Piece::Rook(_))));
+
+        assert_eq!("O-O", change_kingside_o.format());
+        assert_eq!("O-O-O", change_queenside_o.format());
+
+        let empty_pos = Position::new(&echiquier);
+        assert_eq!(None, PositionChange::from_text(&empty_pos, "O-O"));
+        assert_eq!(None, PositionChange::from_text(&empty_pos, "O-O-O"));
     }
 }

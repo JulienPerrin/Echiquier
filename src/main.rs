@@ -5,6 +5,9 @@ mod pieces;
 use game::game::Game;
 
 pub const IMMORTAL_GAME: &str = "\
+[White \"Adolf Anderssen\"]
+[Black \"Lionel Kieseritzky\"]
+
 1.  e4 e5
 2.  f4 exf4
 3.  Fc4 Dh4+
@@ -36,6 +39,10 @@ fn main() {
 fn build_chessboard() {
     let game =
         Game::from_default_text(IMMORTAL_GAME).expect("Failed to parse and play the Immortal Game");
+
+    if let (Some(w), Some(b)) = (game.white.as_deref(), game.black.as_deref()) {
+        println!("{w} vs {b}\n");
+    }
 
     let moves = game.format_moves();
     println!("Initial position:\n{}\n", game.initial_position);

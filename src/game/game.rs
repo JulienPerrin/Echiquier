@@ -92,6 +92,40 @@ pub const INITIAL_POSITION: Position<'static> = Position {
 pub struct Game<'a> {
     pub initial_position: Position<'a>,
     pub positions: Vec<Position<'a>>,
+    pub white: Option<String>,
+    pub black: Option<String>,
+    pub headers: Vec<(String, String)>,
+}
+
+#[allow(dead_code)]
+fn parse_pgn_headers(
+    text: &str,
+) -> (Vec<(String, String)>, Option<String>, Option<String>, String) {
+    let mut headers = Vec::new();
+    let mut white = None;
+    let mut black = None;
+    let mut moves_lines = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            let inner = trimmed[1..trimmed.len() - 1].trim();
+            if let Some(space_pos) = inner.find(char::is_whitespace) {
+                let key = inner[..space_pos].trim();
+                let val = inner[space_pos..].trim().trim_matches('"');
+                if key.eq_ignore_ascii_case("white") {
+                    white = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("black") {
+                    black = Some(val.to_string());
+                }
+                headers.push((key.to_string(), val.to_string()));
+            }
+        } else {
+            moves_lines.push(line);
+        }
+    }
+
+    (headers, white, black, moves_lines.join("\n"))
 }
 
 #[allow(dead_code)]
@@ -101,7 +135,8 @@ fn clean_moves_text(text: &str) -> String {
         .replace("0-1", " ")
         .replace("1/2-1/2", " ")
         .replace("mat", " ")
-        .replace("Mat", " ");
+        .replace("Mat", " ")
+        .replace('*', " ");
     let mut result = String::with_capacity(sanitized.len());
     let chars: Vec<char> = sanitized.chars().collect();
     let mut i = 0;
@@ -151,20 +186,39 @@ impl<'a> Game<'a> {
         Game {
             initial_position,
             positions: vec![initial_position],
+            white: None,
+            black: None,
+            headers: Vec::new(),
         }
     }
 
     #[allow(dead_code)]
     fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
+        let (headers, white, black, moves_text) = parse_pgn_headers(text);
         let mut game = Game::new(initial_position);
-        game.play_text_moves(text)?;
+        game.headers = headers;
+        game.white = white;
+        game.black = black;
+        game.play_text_moves(&moves_text)?;
         Some(game)
     }
 
     #[allow(dead_code)]
     fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
+        let (headers, white, black, moves_text) = parse_pgn_headers(text);
+        if self.white.is_none() {
+            self.white = white;
+        }
+        if self.black.is_none() {
+            self.black = black;
+        }
+        for (k, v) in headers {
+            if !self.headers.iter().any(|(existing_k, _)| existing_k == &k) {
+                self.headers.push((k, v));
+            }
+        }
         let initial_len = self.positions.len();
-        let cleaned = clean_moves_text(text);
+        let cleaned = clean_moves_text(&moves_text);
         // TODO: Improve resilience for difficult cases with spaces inside moves like say "K x K   e4 x K"
         // For now, whitespace separates individual moves.
         for token in cleaned.split_whitespace() {
@@ -187,11 +241,17 @@ impl<'a> Game<'a> {
 
     #[allow(dead_code)]
     fn format_pgn(&self) -> String {
-        let moves = self.format_moves();
         let mut result = String::new();
+        for (k, v) in &self.headers {
+            result.push_str(&format!("[{k} \"{v}\"]\n"));
+        }
+        if !self.headers.is_empty() {
+            result.push('\n');
+        }
+        let moves = self.format_moves();
         for (i, m) in moves.iter().enumerate() {
             if i % 2 == 0 {
-                if !result.is_empty() {
+                if i > 0 {
                     result.push(' ');
                 }
                 result.push_str(&format!("{}. ", i / 2 + 1));
@@ -788,6 +848,9 @@ mod tests {
     #[test]
     fn test_immortal_game_parsing() {
         let immortal_pgn = "\
+[White \"Adolf Anderssen\"]
+[Black \"Lionel Kieseritzky\"]
+
 1. e4 e5
 2. f4 exf4
 3. Fc4 Dh4+
@@ -813,8 +876,78 @@ mod tests {
 23. Fe7#";
 
         let game = Game::from_default_text(immortal_pgn).expect("immortal game should parse");
+        assert_eq!(Some("Adolf Anderssen"), game.white.as_deref());
+        assert_eq!(Some("Lionel Kieseritzky"), game.black.as_deref());
         assert_eq!(46, game.positions.len()); // initial position + 45 moves (23*2 - 1)
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::WhiteWin), game.game_result());
+    }
+
+    #[test]
+    fn test_game_of_the_century_parsing() {
+        let byrne_fischer_pgn = "\
+[White \"Donald Byrne\"]
+[Black \"Robert James Fischer\"]
+
+1. Nf3 Nf6
+2. c4 g6
+3. Nc3 Bg7
+4. d4 O-O
+5. Bf4 d5
+6. Qb3 dxc4
+7. Qxc4 c6
+8. e4 Nbd7
+9. Rd1 Nb6
+10. Qc5 Bg4
+11. Bg5 Na4
+12. Qa3 Nxc3
+13. bxc3 Nxe4
+14. Bxe7 Qb6
+15. Bc4 Nxc3
+16. Bc5 Rfe8+
+17. Kf1 Be6
+18. Bxb6 Bxc4+
+19. Kg1 Ne2+
+20. Kf1 Nxd4+
+21. Kg1 Ne2+
+22. Kf1 Nc3+
+23. Kg1 axb6
+24. Qb4 Ra4
+25. Qxb6 Nxd1
+26. h3 Rxa2
+27. Kh2 Nxf2
+28. Re1 Rxe1
+29. Qd8+ Bf8
+30. Nxe1 Bd5
+31. Nf3 Ne4
+32. Qb8 b5
+33. h4 h5
+34. Ne5 Kg7
+35. Kg1 Bc5+
+36. Kf1 Ng3+
+37. Ke1 Bb4+
+38. Kd1 Bb3+
+39. Kc1 Ne2+
+40. Kb1 Nc3+
+41. Kc1 Rc2# 0-1";
+
+        let game = Game::from_default_text(byrne_fischer_pgn)
+            .expect("game of the century should parse");
+        assert_eq!(Some("Donald Byrne"), game.white.as_deref());
+        assert_eq!(Some("Robert James Fischer"), game.black.as_deref());
+        assert_eq!(83, game.positions.len()); // initial position + 82 half-moves
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::BlackWin), game.game_result());
+
+        let pgn = game.format_pgn();
+        assert!(pgn.contains("[White \"Donald Byrne\"]"));
+        assert!(pgn.contains("[Black \"Robert James Fischer\"]"));
+
+        let mut continuing_game = Game::new(INITIAL_POSITION);
+        continuing_game.play_text_moves("[White \"Player 1\"]\n[Round \"1\"]\n1. e4");
+        continuing_game.play_text_moves("[Round \"2\"]\n[Black \"Player 2\"]\n1... e5");
+        assert_eq!(Some("Player 1"), continuing_game.white.as_deref());
+        assert_eq!(Some("Player 2"), continuing_game.black.as_deref());
+        assert_eq!(3, continuing_game.headers.len());
     }
 }
