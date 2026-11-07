@@ -2,57 +2,59 @@ mod echiquier;
 mod game;
 mod pieces;
 
-use echiquier::case::Case;
-use echiquier::piece_move::PieceMove;
-use game::game::{Game, INITIAL_POSITION};
-use pieces::knight::Knight;
-use pieces::pawn::Pawn;
-use pieces::queen::Queen;
+use game::game::Game;
+
+pub const IMMORTAL_GAME: &str = "\
+1.  e4 e5
+2.  f4 exf4
+3.  Fc4 Dh4+
+4.  Rf1 b5
+5.  Fxb5 Cf6
+6.  Cf3 Dh6
+7.  d3 Ch5
+8.  Ch4 Dg5
+9.  Cf5 c6
+10. g4 Cf6
+11. Tg1 cxb5
+12. h4 Dg6
+13. h5 Dg5
+14. Df3 Cg8
+15. Fxf4 Df6
+16. Cc3 Fc5
+17. Cd5 Dxb2
+18. Fd6 Fxg1
+19. e5 Dxa1+
+20. Re2 Ca6
+21. Cxg7+ Rd8
+22. Df6+ Cxf6
+23. Fe7#";
 
 fn main() {
     build_chessboard();
 }
 
 fn build_chessboard() {
-    let mut game = Game::default_game();
+    let game =
+        Game::from_default_text(IMMORTAL_GAME).expect("Failed to parse and play the Immortal Game");
 
-    // 1. f4 e5
-    let f2: Case = INITIAL_POSITION.echiquier.get_case(1, 5);
-    let mut white_pawn_f = Pawn::new(f2, true);
-    game.play_move(&mut white_pawn_f, PieceMove { right: 0, up: 2 });
+    let moves = game.format_moves();
+    println!("Initial position:\n{}\n", game.initial_position);
 
-    let e7: Case = INITIAL_POSITION.echiquier.get_case(6, 4);
-    let mut black_pawn_e = Pawn::new(e7, false);
-    game.play_move(&mut black_pawn_e, PieceMove { right: 0, up: -2 });
+    for (i, position) in game.positions.iter().enumerate().skip(1) {
+        let move_str = &moves[i - 1];
+        let turn = (i - 1) / 2 + 1;
+        let label = if (i - 1) % 2 == 0 {
+            format!("{turn}. {move_str}")
+        } else {
+            format!("{turn}... {move_str}")
+        };
+        println!("Position {i} ({label}):\n{position}\n");
+    }
 
-    // 2. fxe5 d5
-    game.play_move(&mut white_pawn_f, PieceMove { right: -1, up: 1 });
-
-    let d7: Case = INITIAL_POSITION.echiquier.get_case(6, 3);
-    let mut black_pawn_d = Pawn::new(d7, false);
-    game.play_move(&mut black_pawn_d, PieceMove { right: 0, up: -2 });
-
-    // 3. fxd5 (en passant: e5 captures d5 pawn, landing on d6) Cc6
-    game.play_move(&mut white_pawn_f, PieceMove { right: -1, up: 1 });
-
-    let b8: Case = INITIAL_POSITION.echiquier.get_case(7, 1);
-    let mut black_knight = Knight::new(b8, false);
-    game.play_move(&mut black_knight, PieceMove { right: 1, up: -2 });
-
-    // 4. g4 Qh4#
-    let g2: Case = INITIAL_POSITION.echiquier.get_case(1, 6);
-    let mut white_pawn_g = Pawn::new(g2, true);
-    game.play_move(&mut white_pawn_g, PieceMove { right: 0, up: 2 });
-
-    let d8: Case = INITIAL_POSITION.echiquier.get_case(7, 3);
-    let mut black_queen = Queen::new(d8, false);
-    game.play_move(&mut black_queen, PieceMove { right: 4, up: -4 });
-
-    println!("Before:\n{}", game.initial_position);
-    println!("\nAfter:\n{}", game.current_position());
+    println!("Game:\n{game}");
     if game.is_game_finished() {
         if let Some(result) = game.game_result() {
-            println!("\nGame result: {}", result);
+            println!("\nGame result: {result}");
         }
     }
 }

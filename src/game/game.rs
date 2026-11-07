@@ -4,6 +4,7 @@ use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
+use crate::game::position_change::PositionChange;
 use crate::game::result::Result;
 use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
@@ -93,9 +94,55 @@ pub struct Game<'a> {
     pub positions: Vec<Position<'a>>,
 }
 
+#[allow(dead_code)]
+fn clean_moves_text(text: &str) -> String {
+    let sanitized = text
+        .replace("1-0", " ")
+        .replace("0-1", " ")
+        .replace("1/2-1/2", " ")
+        .replace("mat", " ")
+        .replace("Mat", " ");
+    let mut result = String::with_capacity(sanitized.len());
+    let chars: Vec<char> = sanitized.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_ascii_digit() {
+            let start = i;
+            while i < chars.len() && chars[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i < chars.len() && chars[i] == '.' {
+                while i < chars.len() && chars[i] == '.' {
+                    i += 1;
+                }
+                result.push(' ');
+            } else {
+                for c in &chars[start..i] {
+                    result.push(*c);
+                }
+            }
+        } else if chars[i] == '.' {
+            while i < chars.len() && chars[i] == '.' {
+                i += 1;
+            }
+            result.push(' ');
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    result
+}
+
 impl Game<'static> {
+    #[allow(dead_code)]
     pub fn default_game() -> Game<'static> {
         Game::new(INITIAL_POSITION)
+    }
+
+    #[allow(dead_code)]
+    pub fn from_default_text(text: &str) -> Option<Game<'static>> {
+        Game::from_text(INITIAL_POSITION, text)
     }
 }
 
@@ -107,10 +154,60 @@ impl<'a> Game<'a> {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
+        let mut game = Game::new(initial_position);
+        game.play_text_moves(text)?;
+        Some(game)
+    }
+
+    #[allow(dead_code)]
+    pub fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
+        let initial_len = self.positions.len();
+        let cleaned = clean_moves_text(text);
+        // TODO: Improve resilience for difficult cases with spaces inside moves like say "K x K   e4 x K"
+        // For now, whitespace separates individual moves.
+        for token in cleaned.split_whitespace() {
+            if let Some(change) = PositionChange::from_text(self.current_position(), token) {
+                self.positions.push(change.next);
+            } else {
+                self.positions.truncate(initial_len);
+                return None;
+            }
+        }
+        Some(self.current_position())
+    }
+
+    #[allow(dead_code)]
+    pub fn format_moves(&self) -> Vec<String> {
+        (0..self.positions.len().saturating_sub(1))
+            .map(|i| PositionChange::new(self.positions[i], self.positions[i + 1]).format())
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    pub fn format_pgn(&self) -> String {
+        let moves = self.format_moves();
+        let mut result = String::new();
+        for (i, m) in moves.iter().enumerate() {
+            if i % 2 == 0 {
+                if !result.is_empty() {
+                    result.push(' ');
+                }
+                result.push_str(&format!("{}. ", i / 2 + 1));
+            } else {
+                result.push(' ');
+            }
+            result.push_str(m);
+        }
+        result
+    }
+
     pub fn current_position(&self) -> &Position<'a> {
         self.positions.last().unwrap_or(&self.initial_position)
     }
 
+    #[allow(dead_code)]
     pub fn play_move<T>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a>
     where
         T: Movable + Copy,
@@ -119,6 +216,7 @@ impl<'a> Game<'a> {
         self.play_move_with_promotion(piece, piece_move, None)
     }
 
+    #[allow(dead_code)]
     pub fn play_move_with_promotion<T>(
         &mut self,
         piece: &mut T,
@@ -153,7 +251,10 @@ impl<'a> Game<'a> {
     pub fn game_result(&self) -> Option<Result> {
         let current = self.current_position();
         let is_white_turn = current.is_white_turn();
-        let king = current.get_pieces::<King>(is_white_turn).into_iter().next()?;
+        let king = current
+            .get_pieces::<King>(is_white_turn)
+            .into_iter()
+            .next()?;
         if king.is_in_checkmate(current) {
             if is_white_turn {
                 Some(Result::BlackWin)
@@ -170,7 +271,19 @@ impl<'a> Game<'a> {
 
 impl<'a> Display for Game<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.current_position())
+        let moves = self.format_moves();
+        for (i, chunk) in moves.chunks(2).enumerate() {
+            if i > 0 {
+                writeln!(f)?;
+            }
+            let turn = i + 1;
+            if chunk.len() == 2 {
+                write!(f, "{turn}. {} {}", chunk[0], chunk[1])?;
+            } else {
+                write!(f, "{turn}. {}", chunk[0])?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -217,9 +330,24 @@ mod tests {
     }
 
     #[test]
-    fn game_display_matches_current_position() {
+    fn game_display_prints_game_rounds() {
         let game = Game::default_game();
-        assert_eq!(game.current_position().to_string(), game.to_string());
+        assert_eq!("", game.to_string());
+
+        let mut game1 = Game::default_game();
+        game1.play_text_moves("1. e4");
+        assert_eq!("1. e4", game1.to_string());
+
+        let mut game2 = Game::default_game();
+        game2.play_text_moves("1. e4 e5\n2. Nf3");
+        assert_eq!("1. e4 e5\n2. ♞f3", game2.to_string());
+
+        let parsed_game =
+            Game::from_default_text("1. f4 e5 2. fxe5 d5 3. exd6 Cc6 4. g4 Qh4#").unwrap();
+        assert_eq!(
+            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4#",
+            parsed_game.to_string()
+        );
     }
 
     #[test]
@@ -245,6 +373,19 @@ mod tests {
 
         let after_en_passant = *game.play_move(&mut white_pawn, PieceMove { right: -1, up: 1 });
         assert_eq!(d6, white_pawn.case);
+        assert_eq!(
+            "\
+8 ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖
+7 · ♙ ♙ · ♙ ♙ ♙ ♙
+6 ♙ · · ♟ · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 ♟ ♟ ♟ ♟ · ♟ ♟ ♟
+1 ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
+  A B C D E F G H",
+            after_en_passant.to_string()
+        );
         assert_eq!(
             Some(Piece::from(white_pawn)),
             after_en_passant.get_piece(&d6)
@@ -353,6 +494,19 @@ mod tests {
         position.last_moved_piece = Some(Piece::from(black_rook));
 
         let game = Game::new(position);
+        assert_eq!(
+            "\
+8 · · · · · · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 ♟ ♟ · · · · · ·
+1 ♚ · · · ♖ · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::BlackWin), game.game_result());
     }
@@ -378,6 +532,19 @@ mod tests {
         position.last_moved_piece = Some(Piece::from(white_rook));
 
         let game = Game::new(position);
+        assert_eq!(
+            "\
+8 ♔ · · · ♜ · · ·
+7 ♙ ♙ · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · · · ·
+1 · · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::WhiteWin), game.game_result());
     }
@@ -400,6 +567,19 @@ mod tests {
         position.last_moved_piece = Some(Piece::from(black_queen));
 
         let game = Game::new(position);
+        assert_eq!(
+            "\
+8 · · · · · · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 ♔ · · · · · · ·
+2 · · ♕ · · · · ·
+1 ♚ · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::Draw), game.game_result());
     }
@@ -422,6 +602,19 @@ mod tests {
         position.last_moved_piece = Some(Piece::from(white_queen));
 
         let game = Game::new(position);
+        assert_eq!(
+            "\
+8 ♔ · · · · · · ·
+7 · · ♛ · · · · ·
+6 ♚ · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · · · ·
+1 · · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
         assert!(game.is_game_finished());
         assert_eq!(Some(Result::Draw), game.game_result());
     }
@@ -477,5 +670,151 @@ mod tests {
 
         let piece_at_e8 = next_position.get_piece(&e8).expect("piece must be at e8");
         assert!(matches!(piece_at_e8, Piece::Queen(_)));
+    }
+
+    #[test]
+    fn game_from_text_parses_sequential_moves_with_move_numbers() {
+        let text = "1. e4 e5\n2. Nf3 Nc6\n3. Bc4 Bc5";
+        let game = Game::from_default_text(text).expect("game should parse");
+        assert_eq!(7, game.positions.len());
+
+        let current = game.current_position();
+        let c4 = ECHIQUIER.get_case(3, 2);
+        let c5 = ECHIQUIER.get_case(4, 2);
+        assert!(matches!(
+            current.get_piece(&c4),
+            Some(Piece::Bishop(b)) if b.is_white
+        ));
+        assert!(matches!(
+            current.get_piece(&c5),
+            Some(Piece::Bishop(b)) if !b.is_white
+        ));
+    }
+
+    #[test]
+    fn game_from_text_handles_variations_in_numbering_and_dots() {
+        let text = "1.e4 e5 2.Nf3 ... 2... Nc6";
+        let game = Game::from_text(INITIAL_POSITION, text).expect("game should parse");
+        assert_eq!(5, game.positions.len());
+    }
+
+    #[test]
+    fn game_from_text_fools_mate() {
+        let text = "1. f3 e5 2. g4 Qh4#";
+        let game = Game::from_default_text(text).expect("fool's mate should parse");
+        assert_eq!(5, game.positions.len());
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::BlackWin), game.game_result());
+    }
+
+    #[test]
+    fn game_from_text_returns_none_on_invalid_move() {
+        let text = "1. e4 e5 2. e5";
+        assert_eq!(None, Game::from_default_text(text));
+    }
+
+    #[test]
+    fn game_from_text_with_empty_or_whitespace_or_dots_only() {
+        let text = "   1. ...   ";
+        let game = Game::from_default_text(text).expect("empty should parse to initial position");
+        assert_eq!(1, game.positions.len());
+        assert_eq!(INITIAL_POSITION, *game.current_position());
+    }
+
+    #[test]
+    fn game_play_text_moves_continues_existing_game() {
+        let mut game = Game::default_game();
+        let pos1 = *game.play_text_moves("1. e4 e5").expect("moves should play");
+        assert_eq!(3, game.positions.len());
+        assert_eq!(pos1, *game.current_position());
+
+        let pos2 = *game
+            .play_text_moves("2. Nf3 Nc6")
+            .expect("moves should play");
+        assert_eq!(5, game.positions.len());
+        assert_eq!(pos2, *game.current_position());
+
+        assert_eq!(None, game.play_text_moves("invalid"));
+    }
+
+    #[test]
+    fn game_main_parses_and_formats_roundtrip() {
+        // 1. Parse text version of the game from main.rs
+        let main_game_text = "1. f4 e5 2. fxe5 d5 3. exd6 Cc6 4. g4 Qh4#";
+        let game = Game::from_default_text(main_game_text).expect("game from main.rs should parse");
+
+        // 2. Visual assertion of the final position
+        assert_eq!(
+            "\
+8 ♖ · ♗ · ♔ ♗ ♘ ♖
+7 ♙ ♙ ♙ · · ♙ ♙ ♙
+6 · · ♘ ♟ · · · ·
+5 · · · · · · · ·
+4 · · · · · · ♟ ♕
+3 · · · · · · · ·
+2 ♟ ♟ ♟ ♟ ♟ · · ♟
+1 ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜
+  A B C D E F G H",
+            game.current_position().to_string()
+        );
+        assert_eq!(Some(Result::BlackWin), game.game_result());
+
+        // 3. Format moves and verify formatting
+        let expected_moves = vec![
+            "f4".to_string(),
+            "e5".to_string(),
+            "fxe5".to_string(),
+            "d5".to_string(),
+            "exd6".to_string(),
+            "♘c6".to_string(),
+            "g4".to_string(),
+            "♕h4#".to_string(),
+        ];
+        assert_eq!(expected_moves, game.format_moves());
+
+        let expected_pgn = "1. f4 e5 2. fxe5 d5 3. exd6 ♘c6 4. g4 ♕h4#";
+        assert_eq!(expected_pgn, game.format_pgn());
+        assert_eq!(
+            "1. f4 e5\n2. fxe5 d5\n3. exd6 ♘c6\n4. g4 ♕h4#",
+            game.to_string()
+        );
+
+        // 4. Round-trip: parsing the formatted PGN produces the same game
+        let round_trip_game =
+            Game::from_default_text(&game.format_pgn()).expect("formatted PGN should parse");
+        assert_eq!(game, round_trip_game);
+    }
+
+    #[test]
+    fn test_immortal_game_parsing() {
+        let immortal_pgn = "\
+1. e4 e5
+2. f4 exf4
+3. Fc4 Dh4+
+4. Rf1 b5
+5. Fxb5 Cf6
+6. Cf3 Dh6
+7. d3 Ch5
+8. Ch4! Dg5
+9. Cf5! c6
+10. g4 Cf6?!
+11. Tg1! cxb5?
+12. h4 Dg6
+13. h5 Dg5
+14. Df3 Cg8
+15. Fxf4 Df6
+16. Cc3 Fc5?
+17. Cd5 Dxb2
+18. Fd6!? Fxg1
+19. e5! Dxa1+
+20. Re2 Ca6??
+21. Cxg7+ Rd8
+22. Df6+!! Cxf6
+23. Fe7#";
+
+        let game = Game::from_default_text(immortal_pgn).expect("immortal game should parse");
+        assert_eq!(46, game.positions.len()); // initial position + 45 moves (23*2 - 1)
+        assert!(game.is_game_finished());
+        assert_eq!(Some(Result::WhiteWin), game.game_result());
     }
 }

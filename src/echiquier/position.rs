@@ -239,6 +239,22 @@ mod tests {
         let e8 = position.echiquier.get_case(7, 4);
         let white_rook = Piece::from(Rook::new(a1, true));
         let black_king = Piece::from(King::new(e8, false));
+        position.set_piece(white_rook);
+        position.set_piece(black_king);
+
+        assert_eq!(
+            "\
+8 · · · · ♔ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · · · ·
+1 ♜ · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
 
         // 1. No moves made yet: White's turn by default
         assert!(position.is_white_turn());
@@ -269,6 +285,20 @@ mod tests {
         position.set_piece(Rook::new(e8, false));
         position.set_piece(Rook::new(a4, true));
 
+        assert_eq!(
+            "\
+8 · · · · ♖ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 ♜ · · · · · · ·
+3 · · · · · · · ·
+2 · · · · · · · ·
+1 · · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
+
         assert!(position.is_case_attacked(&e4, true));
         assert!(position.is_case_attacked(&e4, false));
 
@@ -291,6 +321,20 @@ mod tests {
         // b2 has a friendly pawn (not attacked by black)
         position.set_piece(Pawn::new(b2, true));
 
+        assert_eq!(
+            "\
+8 · · · · ♖ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · · · · ·
+3 · · · · · · · ·
+2 · ♟ · · · · · ·
+1 · · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
+
         // 1. Occupied and not attacked: b2
         assert!(position.is_case_occupied_or_attacked(&b2, true));
 
@@ -300,6 +344,21 @@ mod tests {
         // 3. Occupied and attacked: place a piece on e4
         let white_knight = Knight::new(e4, true);
         position.set_piece(white_knight);
+
+        assert_eq!(
+            "\
+8 · · · · ♖ · · ·
+7 · · · · · · · ·
+6 · · · · · · · ·
+5 · · · · · · · ·
+4 · · · · ♞ · · ·
+3 · · · · · · · ·
+2 · ♟ · · · · · ·
+1 · · · · · · · ·
+  A B C D E F G H",
+            position.to_string()
+        );
+
         assert!(position.is_case_occupied_or_attacked(&e4, true));
 
         // 4. Neither occupied nor attacked: h1

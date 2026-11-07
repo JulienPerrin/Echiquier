@@ -3,11 +3,12 @@ use std::ops::Deref;
 
 use crate::echiquier::case::Case;
 use crate::echiquier::piece_move::PieceMove;
+use crate::echiquier::position::Position;
 use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
 use crate::pieces::movable::Movable;
-use crate::pieces::pawn::Pawn;
+use crate::pieces::pawn::{Pawn, PromotionPiece};
 use crate::pieces::queen::Queen;
 use crate::pieces::rook::Rook;
 
@@ -54,6 +55,50 @@ impl Deref for Piece {
 }
 
 impl Piece {
+    #[allow(dead_code)]
+    pub fn symbol(&self) -> char {
+        let (white, black) = match self {
+            Piece::Pawn(_) => ('♟', '♙'),
+            Piece::Knight(_) => ('♞', '♘'),
+            Piece::Bishop(_) => ('♝', '♗'),
+            Piece::Rook(_) => ('♜', '♖'),
+            Piece::Queen(_) => ('♛', '♕'),
+            Piece::King(_) => ('♚', '♔'),
+        };
+        if self.is_white { white } else { black }
+    }
+
+    pub fn matches_specifier(&self, c: char) -> bool {
+        match self {
+            Piece::King(_) => matches!(c, '♚' | '♔' | 'K' | 'k' | 'R' | 'r'),
+            Piece::Queen(_) => matches!(c, '♛' | '♕' | 'Q' | 'q' | 'D'),
+            Piece::Rook(_) => matches!(c, '♜' | '♖' | 'R' | 'r' | 'T' | 't'),
+            Piece::Bishop(_) => matches!(c, '♝' | '♗' | 'B' | 'F'),
+            Piece::Knight(_) => matches!(c, '♞' | '♘' | 'N' | 'n' | 'C' | 'K' | 'k'),
+            Piece::Pawn(_) => matches!(c, '♟' | '♙' | 'P' | 'p'),
+        }
+    }
+
+    pub fn move_piece<'a>(
+        &mut self,
+        position: &Position<'a>,
+        piece_move: PieceMove,
+        case: Case,
+        piece_taken: Option<Piece>,
+        promotion: Option<PromotionPiece>,
+    ) -> Position<'a> {
+        let next = match self {
+            Piece::Pawn(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+            Piece::Knight(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+            Piece::Bishop(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+            Piece::Rook(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+            Piece::Queen(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+            Piece::King(p) => p.move_piece(position, piece_move, case, piece_taken, promotion),
+        };
+        *self = next.get_piece(&case).expect("piece must be at target case");
+        next
+    }
+
     pub fn with_case(self, case: Case) -> Self {
         match self {
             Piece::Pawn(mut p) => {
@@ -195,6 +240,9 @@ impl TryFrom<Piece> for King {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::echiquier::echiquier::Echiquier;
+    use crate::echiquier::piece_move::PieceMove;
+    use crate::echiquier::position::Position;
 
     #[test]
     fn try_from_piece_success_and_failure() {
@@ -250,5 +298,91 @@ mod tests {
             let moved = piece.with_case(to);
             assert_eq!(to, moved.case);
         }
+    }
+
+    #[test]
+    fn piece_symbol_returns_glyph_for_each_variant() {
+        let case = Case { rank: 0, file: 0 };
+        assert_eq!('♟', Piece::from(Pawn::new(case, true)).symbol());
+        assert_eq!('♙', Piece::from(Pawn::new(case, false)).symbol());
+        assert_eq!('♞', Piece::from(Knight::new(case, true)).symbol());
+        assert_eq!('♘', Piece::from(Knight::new(case, false)).symbol());
+        assert_eq!('♝', Piece::from(Bishop::new(case, true)).symbol());
+        assert_eq!('♗', Piece::from(Bishop::new(case, false)).symbol());
+        assert_eq!('♜', Piece::from(Rook::new(case, true)).symbol());
+        assert_eq!('♖', Piece::from(Rook::new(case, false)).symbol());
+        assert_eq!('♛', Piece::from(Queen::new(case, true)).symbol());
+        assert_eq!('♕', Piece::from(Queen::new(case, false)).symbol());
+        assert_eq!('♚', Piece::from(King::new(case, true)).symbol());
+        assert_eq!('♔', Piece::from(King::new(case, false)).symbol());
+    }
+
+    #[test]
+    fn piece_move_piece_delegates_to_inner_movable() {
+        let echiquier = Echiquier::new();
+        let mut pos = Position::new(&echiquier);
+        let e2 = echiquier.get_case(1, 4);
+        let e4 = echiquier.get_case(3, 4);
+        let mut piece = Piece::from(Pawn::new(e2, true));
+        pos.set_piece(piece);
+        let next_pos = piece.move_piece(&pos, PieceMove { right: 0, up: 2 }, e4, None, None);
+        assert_eq!(e4, piece.case);
+        assert_eq!(Some(piece), next_pos.get_piece(&e4));
+    }
+
+    #[test]
+    fn piece_matches_specifier_recognizes_letters_and_glyphs() {
+        let case = Case { rank: 0, file: 0 };
+        let knight = Piece::from(Knight::new(case, true));
+        assert!(knight.matches_specifier('♞'));
+        assert!(knight.matches_specifier('♘'));
+        assert!(knight.matches_specifier('C'));
+        assert!(!knight.matches_specifier('c')); // minuscules < 'h' are rejected (files)
+        assert!(knight.matches_specifier('N'));
+        assert!(knight.matches_specifier('n'));
+        assert!(knight.matches_specifier('K'));
+        assert!(knight.matches_specifier('k'));
+        assert!(!knight.matches_specifier('B'));
+
+        let bishop = Piece::from(Bishop::new(case, true));
+        assert!(bishop.matches_specifier('♝'));
+        assert!(bishop.matches_specifier('♗'));
+        assert!(bishop.matches_specifier('B'));
+        assert!(bishop.matches_specifier('F'));
+        assert!(!bishop.matches_specifier('b')); // minuscules < 'h' are rejected
+        assert!(!bishop.matches_specifier('f')); // minuscules < 'h' are rejected
+        assert!(!bishop.matches_specifier('C'));
+
+        let king = Piece::from(King::new(case, true));
+        assert!(king.matches_specifier('♚'));
+        assert!(king.matches_specifier('♔'));
+        assert!(king.matches_specifier('K'));
+        assert!(king.matches_specifier('k'));
+        assert!(king.matches_specifier('R'));
+        assert!(king.matches_specifier('r'));
+        assert!(!king.matches_specifier('Q'));
+
+        let queen = Piece::from(Queen::new(case, true));
+        assert!(queen.matches_specifier('♛'));
+        assert!(queen.matches_specifier('♕'));
+        assert!(queen.matches_specifier('Q'));
+        assert!(queen.matches_specifier('q'));
+        assert!(queen.matches_specifier('D'));
+        assert!(!queen.matches_specifier('d')); // minuscules < 'h' are rejected
+
+        let rook = Piece::from(Rook::new(case, true));
+        assert!(rook.matches_specifier('♜'));
+        assert!(rook.matches_specifier('♖'));
+        assert!(rook.matches_specifier('R'));
+        assert!(rook.matches_specifier('r'));
+        assert!(rook.matches_specifier('T'));
+        assert!(rook.matches_specifier('t'));
+
+        let pawn = Piece::from(Pawn::new(case, true));
+        assert!(pawn.matches_specifier('♟'));
+        assert!(pawn.matches_specifier('♙'));
+        assert!(pawn.matches_specifier('P'));
+        assert!(pawn.matches_specifier('p'));
+        assert!(!pawn.matches_specifier('K'));
     }
 }

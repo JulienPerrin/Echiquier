@@ -71,4 +71,7 @@ A chessboard written in RUST
   - [x] track whose turn it is to play (White or Black)
   - [x] determine game outcome (`Result::WhiteWin`, `Result::BlackWin`, `Result::Draw`) via `is_game_finished` and `game_result`
   - [ ] support chess notation (FEN / Algebraic notation / PGN)
+    - [x] Algebraic notation for moves with disambiguation, captures, check (`+`), checkmate (`#`), draw (`=`)
+    - [x] Parse algebraic notation move text into a `PositionChange` struct with disambiguation and permissive capture support (ignoring annotations `!`, `?`, `+`, `#`)
+    - [ ] Handle `=` in notation (can mean either draw or draw offer / demand of draw), and support draws and resignations
 - [ ] Build chess engine / GUI (`macroquad`)
