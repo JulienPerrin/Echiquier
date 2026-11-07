@@ -19,10 +19,21 @@ pub fn immortal_moves() -> Vec<String> {
     game.format_moves()
 }
 
+pub fn immortal_headers_json() -> String {
+    let game = Game::from_default_text(immortal::IMMORTAL_GAME).expect("valid immortal game");
+    let entries: Vec<String> = game
+        .headers
+        .iter()
+        .map(|(k, v)| format!("\"{}\":\"{}\"", k, v))
+        .collect();
+    format!("{{{}}}", entries.join(","))
+}
+
 pub fn handle_cli_command(cmd: &str, arg: Option<&str>) -> Option<String> {
     match cmd {
         "fen" => immortal_fen(arg?.parse().ok()?),
         "moves" => Some(immortal_moves().join("\n")),
+        "headers" => Some(immortal_headers_json()),
         _ => None,
     }
 }
@@ -91,6 +102,11 @@ mod tests {
         assert_eq!(None, handle_cli_command("fen", Some("invalid")));
         assert_eq!(None, handle_cli_command("fen", None));
         assert_eq!(Some(moves.join("\n")), handle_cli_command("moves", None));
+        let headers_json = immortal_headers_json();
+        assert!(headers_json.contains("\"Event\":\"London\""));
+        assert!(headers_json.contains("\"Round\":\"?\""));
+        assert!(headers_json.contains("\"Title\":\"The Immortal Game\""));
+        assert_eq!(Some(headers_json), handle_cli_command("headers", None));
         assert_eq!(None, handle_cli_command("unknown", None));
         run_with_args(Some("moves"), None);
     }

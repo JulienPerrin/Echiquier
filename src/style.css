@@ -1,7 +1,7 @@
 @layer reset, base, components, utilities;
 
 @layer reset {
-  :where(html, body, main, div, header, aside, h1, h2, p, ol, li, pre, code, button) {
+  :where(html, body, main, div, header, aside, h1, h2, p, ol, li, dl, dt, dd, pre, code, button) {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -91,6 +91,53 @@
   .players {
     font-size: 0.95rem;
     color: var(--text-secondary);
+  }
+
+  .players:empty,
+  .game-headers:empty {
+    display: none;
+  }
+
+  .game-headers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 0.85rem;
+    margin-block-start: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 0.8rem;
+  }
+
+  .header-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .header-item dt {
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .header-item dd {
+    color: var(--text-primary);
+  }
+
+  .header-item dd.undefined {
+    color: var(--text-secondary);
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  .header-item dd.result-badge {
+    background: var(--accent-primary);
+    color: var(--accent-contrast);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    font-weight: 700;
   }
 
   .board-container {
@@ -193,14 +240,20 @@
     background: var(--bg-hover);
   }
 
+  .moves-scroll-container {
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-inline-end: 0.25rem;
+  }
+
   .moves-list {
     list-style: none;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    padding-inline-end: 0.25rem;
-    flex: 1;
   }
 
   .move-row {
@@ -236,6 +289,33 @@
 
   .move-btn:hover:not(.active) {
     background: var(--bg-hover);
+  }
+
+  .game-result-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-block: 0.6rem 0.25rem;
+  }
+
+  .game-result-container:empty {
+    display: none;
+  }
+
+  .game-result-badge {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding-block: 0.35rem;
+    padding-inline: 1.1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    user-select: text;
+    cursor: default;
+    pointer-events: none;
   }
 
   :where(.start-pos-btn, .move-btn).active {

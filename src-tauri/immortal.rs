@@ -1,8 +1,14 @@
 use crate::game::game::Game;
 
 pub const IMMORTAL_GAME: &str = "\
+[Event \"London\"]
+[Site \"London\"]
+[Date \"1851.06.21\"]
+[Round \"?\"]
 [White \"Adolf Anderssen\"]
 [Black \"Lionel Kieseritzky\"]
+[Result \"1-0\"]
+[Title \"The Immortal Game\"]
 
 1.  e4 e5
 2.  f4 exf4

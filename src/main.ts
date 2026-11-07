@@ -9,16 +9,136 @@ const movesListEl = document.querySelector<HTMLOListElement>("#moves-list");
 const startPosBtn = document.querySelector<HTMLButtonElement>("#start-pos-btn");
 const prevMoveBtn = document.querySelector<HTMLButtonElement>("#prev-move");
 const nextMoveBtn = document.querySelector<HTMLButtonElement>("#next-move");
+const gameTitleEl = document.querySelector<HTMLHeadingElement>("#game-title");
+const gamePlayersEl = document.querySelector<HTMLParagraphElement>("#game-players");
+const gameHeadersEl = document.querySelector<HTMLDListElement>("#game-headers");
+const gameResultContainer = document.querySelector<HTMLDivElement>("#game-result-container");
 
 const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+interface PgnHeaders {
+  Title?: string;
+  Event?: string;
+  Site?: string;
+  Date?: string;
+  Round?: string;
+  White?: string;
+  Black?: string;
+  Result?: string;
+  [key: string]: string | undefined;
+}
+
 let moves: string[] = [];
+let gameResult: string | undefined;
 let currentMoveIndex = 0;
 const moveButtons = new Map<number, HTMLButtonElement>();
 
 function syncBoardMotionPreference(): void {
   if (board) {
     board.animationDuration = reducedMotionQuery.matches ? 0 : 200;
+  }
+}
+
+async function fetchImmortalHeaders(): Promise<PgnHeaders> {
+  if ("__TAURI_INTERNALS__" in window) {
+    return invoke<PgnHeaders>("immortal_headers");
+  }
+  const response = await fetch("/api/immortal_headers");
+  return (await response.json()) as PgnHeaders;
+}
+
+function isHeaderDefined(val: string | undefined): boolean {
+  if (typeof val !== "string") return false;
+  const trimmed = val.trim();
+  if (trimmed === "" || trimmed === "*") return false;
+  return !/^[\s.?/—–-]*$/.test(trimmed);
+}
+
+function computeGameTitle(headers: PgnHeaders): string {
+  if (isHeaderDefined(headers.Title)) {
+    return headers.Title!;
+  }
+
+  const white = isHeaderDefined(headers.White) ? headers.White!.trim() : "";
+  const black = isHeaderDefined(headers.Black) ? headers.Black!.trim() : "";
+
+  let players = "";
+  if (white && black) {
+    players = `${white} vs ${black}`;
+  } else if (white) {
+    players = white;
+  } else if (black) {
+    players = black;
+  }
+
+  const site =
+    isHeaderDefined(headers.Site) ? headers.Site!.trim()
+    : isHeaderDefined(headers.Event) ? headers.Event!.trim()
+    : "";
+  const date = isHeaderDefined(headers.Date) ? headers.Date!.trim() : "";
+
+  const locationAndDate = [site, date].filter(Boolean).join(", ");
+
+  if (players && locationAndDate) {
+    return `${players}, ${locationAndDate}`;
+  }
+  if (players) {
+    return players;
+  }
+  if (locationAndDate) {
+    return locationAndDate;
+  }
+  return "The Immortal Game";
+}
+
+function renderHeaders(headers: PgnHeaders): void {
+  const resolvedTitle = computeGameTitle(headers);
+
+  if (gameTitleEl) {
+    gameTitleEl.textContent = resolvedTitle;
+  }
+  document.title = `${resolvedTitle} | Echiquier`;
+
+  if (gamePlayersEl) {
+    if (isHeaderDefined(headers.Title)) {
+      const white = isHeaderDefined(headers.White) ? headers.White! : "White (?)";
+      const black = isHeaderDefined(headers.Black) ? headers.Black! : "Black (?)";
+      gamePlayersEl.textContent = `${white} vs ${black}`;
+      gamePlayersEl.hidden = false;
+    } else {
+      gamePlayersEl.textContent = "";
+      gamePlayersEl.hidden = true;
+    }
+  }
+
+  if (!gameHeadersEl) return;
+  gameHeadersEl.innerHTML = "";
+
+  const tagKeys = ["Event", "Site", "Date", "Round", "Result"] as const;
+
+  for (const tag of tagKeys) {
+    const val = headers[tag];
+    if (!isHeaderDefined(val)) {
+      continue;
+    }
+
+    const item = document.createElement("div");
+    item.className = "header-item";
+
+    const dt = document.createElement("dt");
+    dt.textContent = tag;
+    item.appendChild(dt);
+
+    const dd = document.createElement("dd");
+    if (tag === "Result") {
+      dd.className = "result-badge";
+      dd.textContent = val!;
+    } else {
+      dd.textContent = val!;
+    }
+
+    item.appendChild(dd);
+    gameHeadersEl.appendChild(item);
   }
 }
 
@@ -139,12 +259,29 @@ function renderMovesList(): void {
   }
 }
 
+function renderGameResult(result?: string): void {
+  if (!gameResultContainer) return;
+  gameResultContainer.innerHTML = "";
+  if (result && isHeaderDefined(result)) {
+    const badge = document.createElement("span");
+    badge.className = "game-result-badge";
+    badge.textContent = result;
+    gameResultContainer.appendChild(badge);
+    gameResultContainer.setAttribute("aria-label", `Game result: ${result}`);
+  }
+}
+
 async function initApp(): Promise<void> {
   syncBoardMotionPreference();
   reducedMotionQuery.addEventListener("change", syncBoardMotionPreference);
 
-  moves = await fetchImmortalMoves();
+  const [fetchedHeaders, fetchedMoves] = await Promise.all([fetchImmortalHeaders(), fetchImmortalMoves()]);
+
+  renderHeaders(fetchedHeaders);
+  moves = fetchedMoves;
+  gameResult = fetchedHeaders.Result;
   renderMovesList();
+  renderGameResult(gameResult);
 
   startPosBtn?.addEventListener("click", () => {
     void selectMove(0);

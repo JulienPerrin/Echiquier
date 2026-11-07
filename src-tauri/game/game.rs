@@ -94,23 +94,38 @@ pub const INITIAL_POSITION: Position<'static> = Position {
 pub struct Game<'a> {
     pub initial_position: Position<'a>,
     pub positions: Vec<Position<'a>>,
+    pub title: Option<String>,
+    pub event: Option<String>,
+    pub site: Option<String>,
+    pub date: Option<String>,
+    pub round: Option<String>,
     pub white: Option<String>,
     pub black: Option<String>,
     pub headers: Vec<(String, String)>,
     pub result: Option<Result>,
 }
 
+struct ParsedHeaders {
+    headers: Vec<(String, String)>,
+    title: Option<String>,
+    event: Option<String>,
+    site: Option<String>,
+    date: Option<String>,
+    round: Option<String>,
+    white: Option<String>,
+    black: Option<String>,
+    result: Option<Result>,
+    moves_text: String,
+}
+
 #[allow(dead_code)]
-fn parse_pgn_headers(
-    text: &str,
-) -> (
-    Vec<(String, String)>,
-    Option<String>,
-    Option<String>,
-    Option<Result>,
-    String,
-) {
+fn parse_pgn_headers(text: &str) -> ParsedHeaders {
     let mut headers = Vec::new();
+    let mut title = None;
+    let mut event = None;
+    let mut site = None;
+    let mut date = None;
+    let mut round = None;
     let mut white = None;
     let mut black = None;
     let mut result = None;
@@ -123,7 +138,17 @@ fn parse_pgn_headers(
             if let Some(space_pos) = inner.find(char::is_whitespace) {
                 let key = inner[..space_pos].trim();
                 let val = inner[space_pos..].trim().trim_matches('"');
-                if key.eq_ignore_ascii_case("white") {
+                if key.eq_ignore_ascii_case("title") {
+                    title = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("event") {
+                    event = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("site") {
+                    site = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("date") {
+                    date = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("round") {
+                    round = Some(val.to_string());
+                } else if key.eq_ignore_ascii_case("white") {
                     white = Some(val.to_string());
                 } else if key.eq_ignore_ascii_case("black") {
                     black = Some(val.to_string());
@@ -132,7 +157,7 @@ fn parse_pgn_headers(
                         result = Some(Result::WhiteWin);
                     } else if val == "0-1" {
                         result = Some(Result::BlackWin);
-                    } else if val == "1/2-1/2" || val == "½-½" {
+                    } else if val == "1/2-1/2" || val == "½-½" || val == "0.5-0.5" {
                         result = Some(Result::Draw);
                     }
                 }
@@ -143,7 +168,18 @@ fn parse_pgn_headers(
         }
     }
 
-    (headers, white, black, result, moves_lines.join("\n"))
+    ParsedHeaders {
+        headers,
+        title,
+        event,
+        site,
+        date,
+        round,
+        white,
+        black,
+        result,
+        moves_text: moves_lines.join("\n"),
+    }
 }
 
 #[allow(dead_code)]
@@ -255,6 +291,11 @@ impl<'a> Game<'a> {
         let mut game = Game {
             initial_position,
             positions: vec![initial_position],
+            title: None,
+            event: None,
+            site: None,
+            date: None,
+            round: None,
             white: None,
             black: None,
             headers: Vec::new(),
@@ -265,36 +306,76 @@ impl<'a> Game<'a> {
     }
 
     #[allow(dead_code)]
+    pub fn header(&self, key: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(key))
+            .map(|(_, v)| v.as_str())
+    }
+
+    #[allow(dead_code)]
+    pub fn is_header_defined(&self, key: &str) -> bool {
+        self.header(key).is_some_and(|v| {
+            let trimmed = v.trim();
+            !trimmed.is_empty()
+                && trimmed != "*"
+                && !trimmed
+                    .chars()
+                    .all(|c| matches!(c, '.' | '?' | '/' | '-' | '—' | '–' | ' ' | '\t'))
+        })
+    }
+
+    #[allow(dead_code)]
     fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
-        let (headers, white, black, header_result, moves_text) = parse_pgn_headers(text);
+        let parsed = parse_pgn_headers(text);
         let mut game = Game::new(initial_position);
-        game.headers = headers;
-        game.white = white;
-        game.black = black;
-        game.result = header_result;
-        game.play_text_moves(&moves_text)?;
+        game.headers = parsed.headers;
+        game.title = parsed.title;
+        game.event = parsed.event;
+        game.site = parsed.site;
+        game.date = parsed.date;
+        game.round = parsed.round;
+        game.white = parsed.white;
+        game.black = parsed.black;
+        game.result = parsed.result;
+        game.play_text_moves(&parsed.moves_text)?;
         Some(game)
     }
 
     #[allow(dead_code)]
     fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
-        let (headers, white, black, header_result, raw_moves_text) = parse_pgn_headers(text);
+        let parsed = parse_pgn_headers(text);
+        if self.title.is_none() {
+            self.title = parsed.title;
+        }
+        if self.event.is_none() {
+            self.event = parsed.event;
+        }
+        if self.site.is_none() {
+            self.site = parsed.site;
+        }
+        if self.date.is_none() {
+            self.date = parsed.date;
+        }
+        if self.round.is_none() {
+            self.round = parsed.round;
+        }
         if self.white.is_none() {
-            self.white = white;
+            self.white = parsed.white;
         }
         if self.black.is_none() {
-            self.black = black;
+            self.black = parsed.black;
         }
         if self.result.is_none() {
-            self.result = header_result;
+            self.result = parsed.result;
         }
-        for (k, v) in headers {
+        for (k, v) in parsed.headers {
             if !self.headers.iter().any(|(existing_k, _)| existing_k == &k) {
                 self.headers.push((k, v));
             }
         }
 
-        let (moves, trailing_result, is_resignation) = extract_trailing_result(&raw_moves_text);
+        let (moves, trailing_result, is_resignation) = extract_trailing_result(&parsed.moves_text);
 
         let initial_len = self.positions.len();
         let cleaned = clean_moves_text(&moves);
@@ -1187,5 +1268,88 @@ mod tests {
         assert_eq!(Some(Result::BlackWin), turn_abandonne_white.result);
         assert_eq!("0-1", turn_abandonne_white.to_string());
         assert_eq!("0-1", turn_abandonne_white.format_pgn());
+    }
+
+    #[test]
+    fn test_seven_tag_roster_headers_parsing() {
+        let pgn = "\
+[Event \"F/S Return Match\"]
+[Site \"Belgrade, Serbia JUG\"]
+[Date \"1992.11.04\"]
+[Round \"29\"]
+[White \"Fischer, Robert J.\"]
+[Black \"Spassky, Boris V.\"]
+[Result \"1/2-1/2\"]
+
+1. e4 e5";
+        let game = Game::from_default_text(pgn).expect("valid game");
+        assert_eq!(Some("F/S Return Match"), game.event.as_deref());
+        assert_eq!(Some("Belgrade, Serbia JUG"), game.site.as_deref());
+        assert_eq!(Some("1992.11.04"), game.date.as_deref());
+        assert_eq!(Some("29"), game.round.as_deref());
+        assert_eq!(Some("Fischer, Robert J."), game.white.as_deref());
+        assert_eq!(Some("Spassky, Boris V."), game.black.as_deref());
+        assert_eq!(Some(Result::Draw), game.result);
+        assert_eq!(Some("F/S Return Match"), game.header("Event"));
+        assert_eq!(Some("F/S Return Match"), game.header("event"));
+        assert_eq!(Some("29"), game.header("ROUND"));
+        assert_eq!(None, game.header("NonExistent"));
+
+        let undefined_pgn = "\
+[Event \"?\"]
+[Site \"?\"]
+[Date \"????.??.??\"]
+[Round \"?\"]
+[White \"?\"]
+[Black \"?\"]
+[Result \"*\"]
+
+1. e4";
+        let undefined_game =
+            Game::from_default_text(undefined_pgn).expect("undefined headers game");
+        assert_eq!(Some("?"), undefined_game.event.as_deref());
+        assert_eq!(Some("?"), undefined_game.site.as_deref());
+        assert_eq!(Some("????.??.??"), undefined_game.date.as_deref());
+        assert_eq!(Some("?"), undefined_game.round.as_deref());
+        assert_eq!(Some("?"), undefined_game.white.as_deref());
+        assert_eq!(Some("?"), undefined_game.black.as_deref());
+        assert_eq!(None, undefined_game.result);
+
+        assert!(!undefined_game.is_header_defined("Event"));
+        assert!(!undefined_game.is_header_defined("Site"));
+        assert!(!undefined_game.is_header_defined("Date"));
+        assert!(!undefined_game.is_header_defined("Round"));
+        assert!(!undefined_game.is_header_defined("White"));
+        assert!(!undefined_game.is_header_defined("Black"));
+        assert!(!undefined_game.is_header_defined("Result"));
+        assert!(!undefined_game.is_header_defined("NonExistent"));
+
+        assert!(game.is_header_defined("Event"));
+        assert!(game.is_header_defined("Site"));
+        assert!(game.is_header_defined("Date"));
+        assert!(game.is_header_defined("Round"));
+        assert!(game.is_header_defined("White"));
+        assert!(game.is_header_defined("Black"));
+        assert!(game.is_header_defined("Result"));
+
+        let punc_pgn = "[Round \"-\"]\n[Date \"????/??/??\"]\n[Site \"—\"]\n[Event \"..\"]\n1. e4";
+        let punc_game = Game::from_default_text(punc_pgn).expect("punctuation headers game");
+        assert!(!punc_game.is_header_defined("Round"));
+        assert!(!punc_game.is_header_defined("Date"));
+        assert!(!punc_game.is_header_defined("Site"));
+        assert!(!punc_game.is_header_defined("Event"));
+    }
+
+    #[test]
+    fn test_custom_title_header_parsing() {
+        let pgn = "[Title \"The Immortal Game\"]\n1. e4";
+        let game = Game::from_default_text(pgn).expect("valid game with title");
+        assert_eq!(Some("The Immortal Game"), game.title.as_deref());
+        assert_eq!(Some("The Immortal Game"), game.header("Title"));
+        assert!(game.is_header_defined("Title"));
+
+        let no_title = Game::from_default_text("1. e4").expect("game without title");
+        assert_eq!(None, no_title.title);
+        assert!(!no_title.is_header_defined("Title"));
     }
 }
