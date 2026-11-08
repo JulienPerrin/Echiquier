@@ -11,6 +11,12 @@
     <main class="layout">
       <div class="board-section">
         <header class="board-header">
+          <div class="game-selector-bar">
+            <label for="game-select" class="game-select-label">Game:</label>
+            <select id="game-select" class="game-select" name="game" aria-label="Select game to display">
+              %GAME_OPTIONS%
+            </select>
+          </div>
           <h1 id="game-title">%TITLE%</h1>
           <p id="game-players" class="players">%PLAYERS%</p>
           <dl id="game-headers" class="game-headers" aria-label="Game headers"></dl>
@@ -19,11 +25,6 @@
           <g-chess-board id="board" coordinates="outside"></g-chess-board>
         </div>
         <p id="move-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
-        <pre
-          class="fen-pre"
-          tabindex="0"
-          aria-label="Forsyth-Edwards Notation (FEN)"
-        ><code id="api-status" class="fen-display"></code></pre>
       </div>
 
       <aside class="history-panel" aria-labelledby="moves-heading">
@@ -43,10 +44,55 @@
         <button id="start-pos-btn" type="button" class="start-pos-btn active" aria-pressed="true">Initial position</button>
         <div class="moves-scroll-container">
           <ol id="moves-list" class="moves-list" role="list" aria-labelledby="moves-heading"></ol>
-          <div id="game-result-container" class="game-result-container" role="status" aria-label="Game result"></div>
+          <div class="moves-footer">
+            <div id="game-result-container" class="game-result-container" role="status" aria-label="Game result"></div>
+            <button
+              id="share-btn"
+              type="button"
+              class="share-btn"
+              commandfor="share-dialog"
+              command="show-modal"
+              aria-haspopup="dialog"
+              aria-label="Share game or position"
+            >
+              <span aria-hidden="true">&#x21aa;</span> Share
+            </button>
+          </div>
         </div>
       </aside>
     </main>
+
+    <dialog id="share-dialog" class="share-dialog" aria-labelledby="share-dialog-title">
+      <div class="share-dialog-header">
+        <h2 id="share-dialog-title">Share Game / Position</h2>
+        <button id="close-share-dialog-btn" type="button" class="close-dialog-btn" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="share-tabs" role="tablist" aria-label="Share format">
+        <button id="tab-pgn" role="tab" type="button" class="share-tab active" aria-selected="true" aria-controls="panel-pgn">PGN (Full Game)</button>
+        <button id="tab-fen" role="tab" type="button" class="share-tab" aria-selected="false" aria-controls="panel-fen">FEN (Current Position)</button>
+      </div>
+      <div id="panel-pgn" role="tabpanel" class="share-panel active" aria-labelledby="tab-pgn">
+        <label for="share-pgn-text" class="share-label">Full game PGN:</label>
+        <textarea id="share-pgn-text" class="share-textarea" readonly rows="8" spellcheck="false"></textarea>
+        <div class="share-actions">
+          <button id="dialog-copy-pgn-btn" type="button" class="share-action-btn">Copy PGN</button>
+          <button id="dialog-download-pgn-btn" type="button" class="share-action-btn secondary">Download .pgn</button>
+        </div>
+      </div>
+      <div id="panel-fen" role="tabpanel" class="share-panel" aria-labelledby="tab-fen" hidden>
+        <label for="share-fen-text" class="share-label">Current position FEN:</label>
+        <textarea id="share-fen-text" class="share-textarea" readonly rows="3" spellcheck="false"></textarea>
+        <div class="share-actions">
+          <button id="dialog-copy-fen-btn" type="button" class="share-action-btn">Copy FEN</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="global-toast" class="global-toast" popover="manual" role="status" aria-live="polite">
+      <span id="toast-message" class="toast-message"></span>
+      <button id="toast-close-btn" type="button" class="toast-close-btn" aria-label="Close notification" popovertarget="global-toast" popovertargetaction="hide">✕</button>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

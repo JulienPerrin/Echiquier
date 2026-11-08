@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
+#[cfg(test)]
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::game::position_change::PositionChange;
@@ -9,8 +10,11 @@ use crate::game::result::Result;
 use crate::pieces::bishop::Bishop;
 use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
+#[cfg(test)]
 use crate::pieces::movable::Movable;
-use crate::pieces::pawn::{Pawn, PromotionPiece};
+use crate::pieces::pawn::Pawn;
+#[cfg(test)]
+use crate::pieces::pawn::PromotionPiece;
 use crate::pieces::piece::Piece;
 use crate::pieces::queen::Queen;
 use crate::pieces::rook::Rook;
@@ -118,7 +122,6 @@ struct ParsedHeaders {
     moves_text: String,
 }
 
-#[allow(dead_code)]
 fn parse_pgn_headers(text: &str) -> ParsedHeaders {
     let mut headers = Vec::new();
     let mut title = None;
@@ -182,7 +185,6 @@ fn parse_pgn_headers(text: &str) -> ParsedHeaders {
     }
 }
 
-#[allow(dead_code)]
 fn extract_trailing_result(text: &str) -> (String, Option<Result>, bool) {
     let mut trimmed = text.trim();
     let mut trailing_result = None;
@@ -233,7 +235,6 @@ fn extract_trailing_result(text: &str) -> (String, Option<Result>, bool) {
     (trimmed.to_string(), trailing_result, is_resignation)
 }
 
-#[allow(dead_code)]
 fn clean_moves_text(text: &str) -> String {
     let sanitized = text
         .replace("1-0", " ")
@@ -275,12 +276,11 @@ fn clean_moves_text(text: &str) -> String {
 }
 
 impl Game<'static> {
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn default_game() -> Game<'static> {
         Game::new(INITIAL_POSITION)
     }
 
-    #[allow(dead_code)]
     pub fn from_default_text(text: &str) -> Option<Game<'static>> {
         Game::from_text(INITIAL_POSITION, text)
     }
@@ -305,7 +305,7 @@ impl<'a> Game<'a> {
         game
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn header(&self, key: &str) -> Option<&str> {
         self.headers
             .iter()
@@ -313,7 +313,7 @@ impl<'a> Game<'a> {
             .map(|(_, v)| v.as_str())
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn is_header_defined(&self, key: &str) -> bool {
         self.header(key).is_some_and(|v| {
             let trimmed = v.trim();
@@ -325,7 +325,39 @@ impl<'a> Game<'a> {
         })
     }
 
-    #[allow(dead_code)]
+    pub fn compute_title(&self) -> String {
+        if let Some(title) = &self.title {
+            let t = title.trim();
+            if !t.is_empty() && t != "*" {
+                return t.to_string();
+            }
+        }
+        let white = self.white.as_deref().unwrap_or("").trim();
+        let black = self.black.as_deref().unwrap_or("").trim();
+        let site_opt = self.site.as_deref().or(self.event.as_deref());
+        let site = site_opt.unwrap_or("").trim();
+        let date = self.date.as_deref().unwrap_or("").trim();
+
+        let mut parts = Vec::new();
+        if !white.is_empty() && !black.is_empty() {
+            parts.push(format!("{white} - {black}"));
+        }
+        if !site.is_empty() && site != "?" {
+            parts.push(site.to_string());
+        }
+        if !date.is_empty() {
+            let year = date.split('.').next().unwrap_or("");
+            if !year.is_empty() && year != "?" {
+                parts.push(year.to_string());
+            }
+        }
+        if parts.is_empty() {
+            String::from("The Immortal Game")
+        } else {
+            parts.join(", ")
+        }
+    }
+
     fn from_text(initial_position: Position<'a>, text: &str) -> Option<Self> {
         let parsed = parse_pgn_headers(text);
         let mut game = Game::new(initial_position);
@@ -342,7 +374,6 @@ impl<'a> Game<'a> {
         Some(game)
     }
 
-    #[allow(dead_code)]
     fn play_text_moves(&mut self, text: &str) -> Option<&Position<'a>> {
         let parsed = parse_pgn_headers(text);
         if self.title.is_none() {
@@ -405,14 +436,13 @@ impl<'a> Game<'a> {
         Some(self.current_position())
     }
 
-    #[allow(dead_code)]
     pub fn format_moves(&self) -> Vec<String> {
         (0..self.positions.len().saturating_sub(1))
             .map(|i| PositionChange::new(self.positions[i], self.positions[i + 1]).format())
             .collect()
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn format_pgn(&self) -> String {
         let mut result = String::new();
         for (k, v) in &self.headers {
@@ -453,7 +483,7 @@ impl<'a> Game<'a> {
         self.positions.last().unwrap_or(&self.initial_position)
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn play_move<T>(&mut self, piece: &mut T, piece_move: PieceMove) -> &Position<'a>
     where
         T: Movable + Copy,
@@ -462,7 +492,7 @@ impl<'a> Game<'a> {
         self.play_move_with_promotion(piece, piece_move, None)
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn play_move_with_promotion<T>(
         &mut self,
         piece: &mut T,
@@ -549,6 +579,13 @@ impl<'a> Display for Game<'a> {
             }
         }
         Ok(())
+    }
+}
+
+pub fn compute_title(pgn: &str) -> String {
+    match Game::from_default_text(pgn) {
+        Some(g) => g.compute_title(),
+        None => String::from("The Immortal Game"),
     }
 }
 
@@ -1351,5 +1388,35 @@ mod tests {
         let no_title = Game::from_default_text("1. e4").expect("game without title");
         assert_eq!(None, no_title.title);
         assert!(!no_title.is_header_defined("Title"));
+    }
+
+    #[test]
+    fn test_compute_title() {
+        let game_with_title =
+            Game::from_default_text("[Title \"The Immortal Game\"]\n1. e4").unwrap();
+        assert_eq!("The Immortal Game", game_with_title.compute_title());
+
+        let pgn_match = "[White \"Bobby Fischer\"]\n[Black \"Boris Spassky\"]\n[Site \"Reykjavik\"]\n[Date \"1972.07.23\"]\n1. c4";
+        let game_match = Game::from_default_text(pgn_match).unwrap();
+        assert_eq!(
+            "Bobby Fischer - Boris Spassky, Reykjavik, 1972",
+            game_match.compute_title()
+        );
+
+        let event_game = Game::from_default_text(
+            "[Event \"London Tournament\"]\n[White \"Anderssen\"]\n[Black \"Kieseritzky\"]\n1. e4",
+        )
+        .unwrap();
+        assert_eq!(
+            "Anderssen - Kieseritzky, London Tournament",
+            event_game.compute_title()
+        );
+
+        assert_eq!("The Immortal Game", compute_title("invalid pgn"));
+        assert_eq!("The Immortal Game", compute_title("1. e4 e5"));
+        assert_eq!(
+            "Bobby Fischer - Boris Spassky, Reykjavik, 1972",
+            compute_title(pgn_match)
+        );
     }
 }

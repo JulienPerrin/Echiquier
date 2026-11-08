@@ -1,15 +1,4 @@
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-    UpLeft,
-    UpRight,
-    DownLeft,
-    DownRight,
-}
+pub struct Direction;
 
 impl Direction {
     pub const UP: (i8, i8) = (0, 1);

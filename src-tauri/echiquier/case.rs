@@ -10,14 +10,12 @@ pub struct Case {
 }
 
 impl Case {
-    #[allow(dead_code)]
     pub fn algebraic(&self) -> String {
         let file = (b'a' + self.file) as char;
         let rank = (b'1' + self.rank) as char;
         format!("{file}{rank}")
     }
 
-    #[allow(dead_code)]
     pub fn from_algebraic(s: &str) -> Option<Case> {
         let bytes = s.as_bytes();
         if bytes.len() != 2 {

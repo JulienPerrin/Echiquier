@@ -1,7 +1,7 @@
 @layer reset, base, components, utilities;
 
 @layer reset {
-  :where(html, body, main, div, header, aside, h1, h2, p, ol, li, dl, dt, dd, pre, code, button) {
+  :where(html, body, main, div, header, aside, h1, h2, p, ol, li, dl, dt, dd, pre, code, button, select, label, option) {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -83,6 +83,325 @@
     text-align: center;
   }
 
+  .game-selector-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-block-end: 0.65rem;
+  }
+
+  .game-select-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .game-select {
+    font-family: inherit;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+    max-inline-size: 100%;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .game-select:hover {
+    background-color: var(--bg-elevated);
+    border-color: var(--accent-primary);
+  }
+
+  .game-select:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .share-btn:hover {
+    background-color: var(--bg-elevated);
+    border-color: var(--accent-primary);
+  }
+
+  .share-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Share Dialog */
+  .share-dialog {
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 1.25rem;
+    max-inline-size: 540px;
+    inline-size: calc(100% - 2rem);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    margin: auto;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .share-dialog {
+      opacity: 0;
+      scale: 0.96;
+      transition: opacity 0.18s ease, scale 0.18s ease, display 0.18s allow-discrete, overlay 0.18s allow-discrete;
+    }
+
+    .share-dialog[open] {
+      opacity: 1;
+      scale: 1;
+      @starting-style {
+        opacity: 0;
+        scale: 0.96;
+      }
+    }
+  }
+
+  .share-dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+  }
+
+  .share-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-block-end: 1rem;
+  }
+
+  .share-dialog-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .close-dialog-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .close-dialog-btn:hover,
+  .close-dialog-btn:focus-visible {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+  }
+
+  .share-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-block-end: 1px solid var(--border-subtle);
+    margin-block-end: 1rem;
+  }
+
+  .share-tab {
+    background: transparent;
+    border: none;
+    border-block-end: 2px solid transparent;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .share-tab:hover {
+    color: var(--text-primary);
+  }
+
+  .share-tab.active {
+    color: var(--accent-primary);
+    border-block-end-color: var(--accent-primary);
+  }
+
+  .share-tab:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .share-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-block-end: 0.4rem;
+  }
+
+  .share-textarea {
+    inline-size: 100%;
+    box-sizing: border-box;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 0.6rem;
+    resize: none;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .share-textarea:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+
+  .share-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-block-start: 0.85rem;
+  }
+
+  .share-action-btn {
+    background-color: var(--accent-primary);
+    color: var(--accent-contrast);
+    border: none;
+    border-radius: 6px;
+    padding: 0.45rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .share-action-btn:hover {
+    opacity: 0.9;
+  }
+
+  .share-action-btn.secondary {
+    background-color: var(--bg-control);
+    color: var(--text-primary);
+  }
+
+  .share-action-btn.secondary:hover {
+    background-color: var(--bg-control-hover);
+  }
+
+  .share-action-btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .global-toast {
+    border: none;
+    margin: 0;
+    position: fixed;
+    inset-block-end: 2rem;
+    inset-block-start: auto;
+    inset-inline-start: 50%;
+    inset-inline-end: auto;
+    translate: -50% 0;
+    background-color: var(--accent-primary);
+    color: var(--accent-contrast);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.55rem 0.75rem 0.55rem 1.25rem;
+    border-radius: 9999px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0;
+    pointer-events: auto;
+    transition: opacity 0.2s ease, translate 0.2s ease, display 0.2s ease allow-discrete, overlay 0.2s ease allow-discrete;
+  }
+
+  .global-toast:not(:is(:popover-open, .\:popover-open, .visible)) {
+    display: none;
+    pointer-events: none;
+  }
+
+  .global-toast:is(:popover-open, .\:popover-open, .visible) {
+    display: flex;
+    opacity: 1;
+    translate: -50% -0.5rem;
+  }
+
+  @starting-style {
+    .global-toast:is(:popover-open, .\:popover-open, .visible) {
+      opacity: 0;
+      translate: -50% 0;
+    }
+  }
+
+  .toast-close-btn {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.35rem;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+  }
+
+  .toast-close-btn:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .toast-close-btn:focus-visible {
+    outline: 2px solid var(--accent-contrast);
+    outline-offset: 1px;
+  }
+
+  @supports (appearance: base-select) {
+    .game-select,
+    .game-select::picker(select) {
+      appearance: base-select;
+    }
+
+    .game-select::picker(select) {
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 0.25rem;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .game-select option {
+      padding: 0.35rem 0.55rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .game-select option:hover,
+    .game-select option:focus-visible {
+      background-color: var(--bg-hover);
+    }
+  }
+
   .board-header h1 {
     font-size: 1.5rem;
     margin-block-end: 0.25rem;
@@ -148,23 +467,6 @@
   g-chess-board {
     inline-size: 100%;
     block-size: 100%;
-  }
-
-  .fen-pre {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    padding-block: 0.45rem;
-    padding-inline: 0.75rem;
-    border-radius: 6px;
-    inline-size: 100%;
-    text-align: center;
-    overflow-x: auto;
-  }
-
-  .fen-display {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
   }
 
   .history-panel {
@@ -291,11 +593,19 @@
     background: var(--bg-hover);
   }
 
+  .moves-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.65rem;
+    padding-block: 0.65rem 0.25rem;
+    flex-wrap: wrap;
+  }
+
   .game-result-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding-block: 0.6rem 0.25rem;
   }
 
   .game-result-container:empty {

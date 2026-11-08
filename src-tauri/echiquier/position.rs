@@ -19,7 +19,7 @@ pub struct Position<'a> {
 }
 
 impl<'a> Position<'a> {
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const fn new(echiquier: &'a Echiquier) -> Position<'a> {
         Position {
             echiquier,

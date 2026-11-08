@@ -7,7 +7,6 @@ use crate::pieces::king::King;
 use crate::pieces::movable::Movable;
 use crate::pieces::piece::Piece;
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PositionChange<'a> {
     pub prev: Position<'a>,
@@ -35,12 +34,10 @@ fn parse_departure(left: &str) -> Option<(Option<char>, &str)> {
 }
 
 impl<'a> PositionChange<'a> {
-    #[allow(dead_code)]
     pub const fn new(prev: Position<'a>, next: Position<'a>) -> Self {
         PositionChange { prev, next }
     }
 
-    #[allow(dead_code)]
     pub fn format(&self) -> String {
         let Some(moved_piece) = self.next.last_moved_piece.or_else(|| {
             let changed: Vec<Piece> = (0..64)
@@ -159,14 +156,13 @@ impl<'a> PositionChange<'a> {
         format!("{base}{suffix}")
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn print(&self) -> String {
         let formatted = self.format();
         println!("{formatted}");
         formatted
     }
 
-    #[allow(dead_code)]
     pub fn from_text(position: &Position<'a>, text: &str) -> Option<Self> {
         let cleaned = text.trim_end_matches(['!', '?', '+', '#', '=']);
         if cleaned.is_empty() {
@@ -303,17 +299,17 @@ impl<'a> Display for PositionChange<'a> {
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn format_position_change(prev: &Position, next: &Position) -> String {
     PositionChange::new(*prev, *next).format()
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn print_position_change(prev: &Position, next: &Position) -> String {
     PositionChange::new(*prev, *next).print()
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn parse_position_change<'a>(position: &Position<'a>, text: &str) -> Option<PositionChange<'a>> {
     PositionChange::from_text(position, text)
 }

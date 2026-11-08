@@ -55,7 +55,7 @@ impl Deref for Piece {
 }
 
 impl Piece {
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn symbol(&self) -> char {
         let (white, black) = match self {
             Piece::Pawn(_) => ('♟', '♙'),
