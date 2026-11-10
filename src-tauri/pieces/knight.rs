@@ -75,13 +75,12 @@ mod tests {
         // Surround knight with friendly pawns on all adjacent squares to test jumping
         for dr in -1..=1 {
             for du in -1..=1 {
-                if dr != 0 || du != 0 {
-                    if let Some(adjacent) = position
+                if (dr != 0 || du != 0)
+                    && let Some(adjacent) = position
                         .echiquier
                         .get_relative_case(&e4, PieceMove { right: dr, up: du })
-                    {
-                        position.set_piece(Pawn::new(adjacent, true));
-                    }
+                {
+                    position.set_piece(Pawn::new(adjacent, true));
                 }
             }
         }

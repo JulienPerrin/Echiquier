@@ -58,31 +58,33 @@ impl King {
 
         // Kingside castling (O-O): King moves right 2 to (rank, 6)
         let rook_h = position.echiquier.get_case(rank, 7);
-        if let Some(Piece::Rook(rook)) = position.get_piece(&rook_h) {
-            if rook.is_white == self.is_white && rook.has_never_moved() {
-                let f_case = position.echiquier.get_case(rank, 5);
-                let g_case = position.echiquier.get_case(rank, 6);
-                if !position.is_case_occupied_or_attacked(&f_case, self.is_white)
-                    && !position.is_case_occupied_or_attacked(&g_case, self.is_white)
-                {
-                    moves.push(PieceMove { right: 2, up: 0 });
-                }
+        if position.get_piece(&rook_h).is_some_and(|p| match p {
+            Piece::Rook(r) => r.is_white == self.is_white && r.has_never_moved(),
+            _ => false,
+        }) {
+            let f_case = position.echiquier.get_case(rank, 5);
+            let g_case = position.echiquier.get_case(rank, 6);
+            if !position.is_case_occupied_or_attacked(&f_case, self.is_white)
+                && !position.is_case_occupied_or_attacked(&g_case, self.is_white)
+            {
+                moves.push(PieceMove { right: 2, up: 0 });
             }
         }
 
         // Queenside castling (O-O-O): King moves left 2 to (rank, 2)
         let rook_a = position.echiquier.get_case(rank, 0);
-        if let Some(Piece::Rook(rook)) = position.get_piece(&rook_a) {
-            if rook.is_white == self.is_white && rook.has_never_moved() {
-                let b_case = position.echiquier.get_case(rank, 1);
-                let c_case = position.echiquier.get_case(rank, 2);
-                let d_case = position.echiquier.get_case(rank, 3);
-                if !position.is_case_occupied(&b_case)
-                    && !position.is_case_occupied_or_attacked(&c_case, self.is_white)
-                    && !position.is_case_occupied_or_attacked(&d_case, self.is_white)
-                {
-                    moves.push(PieceMove { right: -2, up: 0 });
-                }
+        if position.get_piece(&rook_a).is_some_and(|p| match p {
+            Piece::Rook(r) => r.is_white == self.is_white && r.has_never_moved(),
+            _ => false,
+        }) {
+            let b_case = position.echiquier.get_case(rank, 1);
+            let c_case = position.echiquier.get_case(rank, 2);
+            let d_case = position.echiquier.get_case(rank, 3);
+            if !position.is_case_occupied(&b_case)
+                && !position.is_case_occupied_or_attacked(&c_case, self.is_white)
+                && !position.is_case_occupied_or_attacked(&d_case, self.is_white)
+            {
+                moves.push(PieceMove { right: -2, up: 0 });
             }
         }
 

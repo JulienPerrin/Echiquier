@@ -82,7 +82,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn is_white_turn(&self) -> bool {
-        self.last_moved_piece.map_or(true, |p| !p.is_white)
+        self.last_moved_piece.is_none_or(|p| !p.is_white)
     }
 
     pub fn is_turn(&self, is_white: bool) -> bool {
@@ -145,14 +145,14 @@ impl<'a> Position<'a> {
             castling.push('-');
         }
         let en_passant = match self.last_moved_piece {
-            Some(Piece::Pawn(p)) if p.last_move.is_some_and(|m| m.up.abs() == 2) => {
-                let m = p.last_move.unwrap();
-                Case {
+            Some(Piece::Pawn(p)) => match p.last_move {
+                Some(m) if m.up.abs() == 2 => Case {
                     rank: (p.case.rank as i8 - m.up / 2) as u8,
                     file: p.case.file,
                 }
-                .algebraic()
-            }
+                .algebraic(),
+                _ => String::from("-"),
+            },
             _ => String::from("-"),
         };
         let (hm, fm) = (self.halfmove_clock, self.fullmove_number);

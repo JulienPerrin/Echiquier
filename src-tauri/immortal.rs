@@ -31,8 +31,9 @@ pub fn build_chessboard() {
 
     println!("Game:\n{game}");
     if game.is_game_finished() {
-        if let Some(result) = game.game_result() {
-            println!("\nGame result: {result}");
+        let result = game.game_result();
+        if let Some(res) = result {
+            println!("\nGame result: {res}");
         }
     }
 }

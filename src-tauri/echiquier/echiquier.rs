@@ -12,7 +12,7 @@ pub struct Echiquier {
 
 impl Echiquier {
     pub const fn new() -> Echiquier {
-        return Echiquier {
+        Echiquier {
             cases: [
                 Case { rank: 0, file: 0 },
                 Case { rank: 0, file: 1 },
@@ -79,16 +79,16 @@ impl Echiquier {
                 Case { rank: 7, file: 6 },
                 Case { rank: 7, file: 7 },
             ],
-        };
+        }
     }
 
     fn exists_case(&self, rank: i8, file: i8) -> bool {
-        return rank >= 0 && file >= 0 && rank < 8 && file < 8;
+        rank >= 0 && file >= 0 && rank < 8 && file < 8
     }
 
     pub fn get_case(&self, rank: u8, file: u8) -> Case {
         let index: u8 = rank * 8 + file;
-        return self.cases[index as usize];
+        self.cases[index as usize]
     }
 
     pub fn get_relative_case(&self, case: &Case, piece_move: PieceMove) -> Option<Case> {

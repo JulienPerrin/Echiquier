@@ -21,12 +21,11 @@ fn parse_departure(left: &str) -> Option<(Option<char>, &str)> {
     let first = left.chars().next()?;
     if GLYPHS.contains(&first) {
         Some((Some(first), &left[first.len_utf8()..]))
-    } else if left.len() == 2
+    } else if (left.len() == 2
         && matches!(left.as_bytes()[0], b'a'..=b'h')
-        && matches!(left.as_bytes()[1], b'1'..=b'8')
+        && matches!(left.as_bytes()[1], b'1'..=b'8'))
+        || (left.len() == 1 && matches!(left.as_bytes()[0], b'a'..=b'h'))
     {
-        Some((None, left))
-    } else if left.len() == 1 && matches!(left.as_bytes()[0], b'a'..=b'h') {
         Some((None, left))
     } else {
         Some((Some(first), &left[first.len_utf8()..]))
@@ -256,11 +255,11 @@ impl<'a> PositionChange<'a> {
                 if is_capture {
                     for (m, taken) in piece.allowed_captures(position) {
                         let target = position.echiquier.get_relative_case(&piece.case, m)?;
-                        let dest_match = dest_opt.map_or(true, |d| target == d);
+                        let dest_match = dest_opt.is_none_or(|d| target == d);
                         let captured_match = captured_spec
                             .chars()
                             .next()
-                            .map_or(true, |c| taken.matches_specifier(c));
+                            .is_none_or(|c| taken.matches_specifier(c));
                         if dest_match && captured_match {
                             candidates.push((piece, m, Some(taken), target));
                         }
