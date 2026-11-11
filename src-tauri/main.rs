@@ -1,61 +1,7 @@
-mod echiquier;
-mod game;
-mod games;
-mod immortal;
-mod pieces;
+// Prevents an additional console window on Windows in release builds.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use game::game::{Game, INITIAL_POSITION};
-
-pub fn hello_world() -> String {
-    INITIAL_POSITION.get_fen()
-}
-
-pub fn game_fen(game_name: Option<&str>, move_index: usize) -> Option<String> {
-    let pgn = games::get_game_or_default(game_name);
-    let game = Game::from_default_text(pgn)?;
-    game.positions.get(move_index).map(|pos| pos.get_fen())
-}
-
-pub fn game_moves(game_name: Option<&str>) -> Vec<String> {
-    let pgn = games::get_game_or_default(game_name);
-    let game = Game::from_default_text(pgn).expect("valid game");
-    game.format_moves()
-}
-
-pub fn game_headers_json(game_name: Option<&str>) -> String {
-    let pgn = games::get_game_or_default(game_name);
-    let game = Game::from_default_text(pgn).expect("valid game");
-    let entries: Vec<String> = game
-        .headers
-        .iter()
-        .map(|(k, v)| format!("\"{}\":\"{}\"", k, v.replace('\"', "\\\"")))
-        .collect();
-    format!("{{{}}}", entries.join(","))
-}
-
-pub fn list_games_json() -> String {
-    games::list_games_json()
-}
-
-pub fn immortal_fen(move_index: usize) -> Option<String> {
-    game_fen(None, move_index)
-}
-
-pub fn immortal_moves() -> Vec<String> {
-    game_moves(None)
-}
-
-pub fn game_pgn(game_name: Option<&str>) -> String {
-    games::get_game_or_default(game_name).to_string()
-}
-
-pub fn immortal_pgn() -> String {
-    game_pgn(None)
-}
-
-pub fn immortal_headers_json() -> String {
-    game_headers_json(None)
-}
+use chessboard_lib::*;
 
 pub fn handle_cli_command(cmd: &str, arg1: Option<&str>, arg2: Option<&str>) -> Option<String> {
     match cmd {
@@ -71,24 +17,32 @@ pub fn handle_cli_command(cmd: &str, arg1: Option<&str>, arg2: Option<&str>) -> 
     }
 }
 
-fn run_with_args(cmd: Option<&str>, arg1: Option<&str>, arg2: Option<&str>) {
-    if let Some(c) = cmd {
-        if let Some(out) = handle_cli_command(c, arg1, arg2) {
-            println!("{out}");
-        }
-    } else {
+/// Runs a CLI sub-command (used by the Vite web bridge and the console).
+/// Returns `false` when no command was given, meaning the desktop app should start.
+fn run_with_args(cmd: Option<&str>, arg1: Option<&str>, arg2: Option<&str>) -> bool {
+    let Some(c) = cmd else {
+        return false;
+    };
+    if c == "board" {
         println!("{}", hello_world());
         immortal::build_chessboard();
+    } else if let Some(out) = handle_cli_command(c, arg1, arg2) {
+        println!("{out}");
     }
+    true
 }
 
+#[cfg(not(tarpaulin_include))]
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    run_with_args(
+    let handled = run_with_args(
         args.first().map(String::as_str),
         args.get(1).map(String::as_str),
         args.get(2).map(String::as_str),
     );
+    if !handled {
+        chessboard_lib::run();
+    }
 }
 
 #[cfg(test)]
@@ -96,12 +50,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hello_world_and_main() {
+    fn test_hello_world_and_console_board() {
         assert_eq!(
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             hello_world()
         );
-        main();
+        assert!(run_with_args(Some("board"), None, None));
+        assert!(run_with_args(Some("unknown"), None, None));
+    }
+
+    #[test]
+    fn test_no_args_is_not_a_cli_command() {
+        assert!(!run_with_args(None, None, None));
     }
 
     #[test]

@@ -465,6 +465,16 @@ mod tests {
             pos1.get_fen()
         );
 
+        // Single-square pawn move (1. e3): no en-passant square
+        let e3 = pos0.echiquier.get_case(2, 4);
+        let mut white_pawn_e2_single = Pawn::try_from(pos0.get_piece(&e2).unwrap()).unwrap();
+        let pos_e3 =
+            white_pawn_e2_single.move_piece(&pos0, PieceMove { right: 0, up: 1 }, e3, None, None);
+        assert_eq!(
+            "rnbqkbnr/pppppppp/8/8/8/4P3/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+            pos_e3.get_fen()
+        );
+
         // 16.1.4 Example 3: After 1... c5
         let c7 = pos1.echiquier.get_case(6, 2);
         let c5 = pos1.echiquier.get_case(4, 2);

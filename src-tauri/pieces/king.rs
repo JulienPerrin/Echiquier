@@ -645,6 +645,13 @@ mod tests {
         pos6.set_piece(moved_rook_a);
         pos6.set_piece(black_rook_h);
         assert!(white_king.allowed_castling_moves(&pos6).is_empty());
+
+        // 7. Non-rook piece on corner squares
+        let mut pos7 = Position::new(&echiquier);
+        pos7.set_piece(white_king);
+        pos7.set_piece(Bishop::new(a1, true));
+        pos7.set_piece(Queen::new(h1, true));
+        assert!(white_king.allowed_castling_moves(&pos7).is_empty());
     }
 
     #[test]

@@ -1,11 +1,3 @@
-[package]
-name = "chessboard"
-version = "0.1.0"
-authors = ["JulienPerrin <julien.perrin25@gmail.com>"]
-edition = "2024"
-
-[[bin]]
-name = "chessboard"
-path = "src-tauri/main.rs"
-
-[dependencies]
+[workspace]
+members = ["src-tauri"]
+resolver = "3"

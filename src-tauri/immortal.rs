@@ -50,6 +50,6 @@ mod tests {
     #[test]
     fn test_immortal_game_asset() {
         assert!(IMMORTAL_GAME.contains("[Title \"The Immortal Game\"]"));
-        assert!(IMMORTAL_GAME.contains("23. Fe7#"));
+        assert!(IMMORTAL_GAME.contains("23. Be7# 1-0"));
     }
 }

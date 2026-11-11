@@ -242,4 +242,13 @@ function rustApiBridge(): Plugin {
 
 export default defineConfig({
   plugins: [rustApiBridge()],
+  // Tauri expects a fixed dev port (see `build.devUrl` in src-tauri/tauri.conf.json)
+  clearScreen: false,
+  server: {
+    port: 5173,
+    strictPort: true,
+    watch: {
+      ignored: ["**/src-tauri/**", "**/target/**"],
+    },
+  },
 });

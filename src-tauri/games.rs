@@ -66,19 +66,25 @@ pub fn get_game_or_default(name: Option<&str>) -> &'static str {
 
 pub use crate::game::game::compute_title;
 
-pub fn list_games_json() -> String {
-    let list: Vec<String> = ALL_GAMES
+/// Identifier and display title of a built-in game, serialized for the frontend.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct GameInfo {
+    pub id: String,
+    pub title: String,
+}
+
+pub fn list_games() -> Vec<GameInfo> {
+    ALL_GAMES
         .iter()
-        .map(|(id, pgn)| {
-            let title = compute_title(pgn);
-            format!(
-                "{{\"id\":\"{}\",\"title\":\"{}\"}}",
-                id,
-                title.replace('\"', "\\\"")
-            )
+        .map(|(id, pgn)| GameInfo {
+            id: (*id).to_string(),
+            title: compute_title(pgn),
         })
-        .collect();
-    format!("[{}]", list.join(","))
+        .collect()
+}
+
+pub fn list_games_json() -> String {
+    serde_json::to_string(&list_games()).expect("game list is serializable")
 }
 
 #[cfg(test)]

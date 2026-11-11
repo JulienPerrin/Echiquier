@@ -1,6 +1,7 @@
 import "gchessboard";
 import type { GChessBoardElement } from "gchessboard";
 import { invoke } from "@tauri-apps/api/core";
+import { writeText as tauriWriteText } from "@tauri-apps/plugin-clipboard-manager";
 
 const board = document.querySelector<GChessBoardElement>("#board");
 const moveAnnouncer = document.querySelector<HTMLParagraphElement>("#move-announcer");
@@ -30,6 +31,8 @@ const toastMessageEl = document.querySelector<HTMLElement>("#toast-message");
 const toastCloseBtn = document.querySelector<HTMLButtonElement>("#toast-close-btn");
 
 const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const isTauri = "__TAURI_INTERNALS__" in window;
 
 interface GameInfo {
   id: string;
@@ -61,7 +64,7 @@ function syncBoardMotionPreference(): void {
 }
 
 async function fetchGamesList(): Promise<GameInfo[]> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
     return invoke<GameInfo[]>("list_games");
   }
   const response = await fetch("/api/games");
@@ -69,7 +72,7 @@ async function fetchGamesList(): Promise<GameInfo[]> {
 }
 
 async function fetchGameHeaders(gameId: string = "immortal"): Promise<PgnHeaders> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
     return invoke<PgnHeaders>("game_headers", { game: gameId });
   }
   const response = await fetch(`/api/headers?game=${encodeURIComponent(gameId)}`);
@@ -257,7 +260,7 @@ function renderHeaders(headers: PgnHeaders): void {
 }
 
 async function fetchGameMoves(gameId: string = "immortal"): Promise<string[]> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
     return invoke<string[]>("game_moves", { game: gameId });
   }
   const response = await fetch(`/api/moves?game=${encodeURIComponent(gameId)}`);
@@ -265,7 +268,7 @@ async function fetchGameMoves(gameId: string = "immortal"): Promise<string[]> {
 }
 
 async function fetchGameFen(moveIndex: number, gameId: string = "immortal"): Promise<string> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
     return invoke<string>("game_fen", { moveIndex, game: gameId });
   }
   const response = await fetch(`/api/fen?move=${moveIndex}&game=${encodeURIComponent(gameId)}`);
@@ -273,7 +276,7 @@ async function fetchGameFen(moveIndex: number, gameId: string = "immortal"): Pro
 }
 
 async function fetchGamePgn(gameId: string = "immortal"): Promise<string> {
-  if ("__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
     return invoke<string>("game_pgn", { game: gameId });
   }
   const response = await fetch(`/api/pgn?game=${encodeURIComponent(gameId)}`);
@@ -311,6 +314,11 @@ function hideToast(): void {
 
 async function copyToClipboard(text: string, label: string): Promise<boolean> {
   try {
+    if (isTauri) {
+      await tauriWriteText(text);
+      showToast(`✓ ${label} copied to clipboard!`);
+      return true;
+    }
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
       await navigator.clipboard.writeText(text);
       showToast(`✓ ${label} copied to clipboard!`);
@@ -578,8 +586,17 @@ async function initApp(): Promise<void> {
     }
   });
 
-  dialogDownloadPgnBtn?.addEventListener("click", () => {
+  dialogDownloadPgnBtn?.addEventListener("click", async () => {
     if (!sharePgnTextEl) return;
+    if (isTauri) {
+      try {
+        const savedPath = await invoke<string>("download_pgn", { game: currentGameId });
+        showToast(`✓ Saved to ${savedPath}`);
+      } catch (err) {
+        showToast(`✕ Failed to save PGN: ${String(err)}`);
+      }
+      return;
+    }
     const blob = new Blob([sharePgnTextEl.value], { type: "application/x-chess-pgn" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

@@ -80,6 +80,7 @@ A chessboard written in RUST
     * [x] Centralize historic games in `src-tauri/games.rs` (The Immortal Game, The Evergreen Game, Kasparov vs Topalov 1999)
     * [x] Allow choosing which game to display via UI selector and query parameters, defaulting to The Immortal Game
     * [x] Provide a Share feature to export or copy current position FEN or full game PGN on demand, removing raw FEN clutter from the main board
+      * [x] Download full game PGN to Downloads folder on desktop and browser
     - [x] Handle `=` in notation (means draw at the very end of trimmed PGN), and support draws and resignations
     - [ ] Complete PGN standard specification (<https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm>)
 - [ ] Build chess engine
