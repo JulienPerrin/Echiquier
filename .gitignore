@@ -1,8 +1,13 @@
 /target
+target/
+src-tauri/target/
+debug/
+flycheck*/
+.rustc_info.json
 **/*.rs.bk
 Cargo.lock
 .workshop.lock
 node_modules/
 dist/
 tarpaulin-report.html
-src-tauri/gen/schemas
+src-tauri/gen/
