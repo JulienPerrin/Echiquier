@@ -1,16 +1,41 @@
 name: dev
 base: ubuntu@26.04
 sdks:
+  #to run the test and the project, not sure it is safe because it gives access to internet to a Chinese model
+  - name: rust
+  - name: node
+    channel: "24"
+  #to speak with the model
   - name: pi
     plugs:
       llm-endpoint:
         interface: tunnel
-        endpoint: localhost:8340
+        endpoint: localhost:8400
+      skills:
+        interface: mount
+        workshop-target: /home/workshop/.agents/skills
+      rules:
+        interface: mount
+        workshop-target: /home/workshop/.agents/rules
   - name: system
     slots:
       llm-endpoint:
         interface: tunnel
-        endpoint: localhost:8340
+        endpoint: localhost:8400
 
 actions:
-  pi: pi "$@"
+  pi: |
+    mkdir -p ~/.pi/agent
+    cat << 'EOF2' > ~/.pi/agent/models.json
+    {
+      "providers": {
+        "qwen3-coder-snap": {
+          "baseUrl": "http://localhost:8400/v1",
+          "api": "openai-completions",
+          "apiKey": "<snap>",
+          "models": [{ "id": "mimo-v2-6/mimo-v2.6-distill-qwen-9b", "contextWindow": 262144 }]
+        }
+      }
+    }
+    EOF2
+    pi "$@"
