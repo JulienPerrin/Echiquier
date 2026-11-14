@@ -1,14 +1,19 @@
 name: dev
 base: ubuntu@26.04
+
 sdks:
-  #to run the test and the project, not sure it is safe because it gives access to internet to a Chinese model
+  # WARNING: Workshop containers get outbound internet access via the default workshopbr0 bridge.
+  # Any tool or agent running inside (including rust/cargo, node/npm, or pi bash tools) can reach
+  # the internet unless outbound traffic on workshopbr0 is blocked with nftables/ufw on the host.
   - name: rust
   - name: node
     channel: "24"
-  #to speak with the model
   - name: pi
     plugs:
       llm-endpoint:
+        interface: tunnel
+        endpoint: localhost:11434
+      snap-endpoint:
         interface: tunnel
         endpoint: localhost:8400
       skills:
@@ -21,21 +26,62 @@ sdks:
     slots:
       llm-endpoint:
         interface: tunnel
+        endpoint: localhost:11434
+      snap-endpoint:
+        interface: tunnel
         endpoint: localhost:8400
 
 actions:
   pi: |
     mkdir -p ~/.pi/agent
-    cat << 'EOF2' > ~/.pi/agent/models.json
+    cat << 'JSON' > ~/.pi/agent/models.json
     {
       "providers": {
-        "qwen3-coder-snap": {
-          "baseUrl": "http://localhost:8400/v1",
+        "ollama-local": {
+          "baseUrl": "http://localhost:11434/v1",
+          "apiKey": "ollama",
           "api": "openai-completions",
-          "apiKey": "<snap>",
-          "models": [{ "id": "mimo-v2-6/mimo-v2.6-distill-qwen-9b", "contextWindow": 262144 }]
+          "models": [
+            {
+              "id": "mimo-256k:latest",
+              "name": "MiMo V2.6 (256k)",
+              "reasoning": true,
+              "input": ["text"],
+              "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+              "contextWindow": 262144,
+              "maxTokens": 32768
+            }
+          ]
         }
       }
     }
-    EOF2
-    pi "$@"
+    JSON
+    cat ~/.agents/rules/*.md > ~/.pi/agent/AGENTS.md 2>/dev/null || true
+    exec pi "$@"
+
+  mimo: |
+    mkdir -p ~/.pi/agent
+    cat << 'JSON' > ~/.pi/agent/models.json
+    {
+      "providers": {
+        "mimo-snap": {
+          "baseUrl": "http://localhost:8400/v1",
+          "apiKey": "local",
+          "api": "openai-completions",
+          "models": [
+            {
+              "id": "mimo-v2.6-distill-qwen-9b",
+              "name": "MiMo V2.6 Snap (256k)",
+              "reasoning": true,
+              "input": ["text"],
+              "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+              "contextWindow": 262144,
+              "maxTokens": 32768
+            }
+          ]
+        }
+      }
+    }
+    JSON
+    cat ~/.agents/rules/*.md > ~/.pi/agent/AGENTS.md 2>/dev/null || true
+    exec pi "$@"
