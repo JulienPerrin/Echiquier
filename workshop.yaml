@@ -50,6 +50,15 @@ actions:
               "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
               "contextWindow": 262144,
               "maxTokens": 32768
+            },
+            {
+              "id": "gemma4-12b-100k",
+              "name": "Gemma 4 12B (128k)",
+              "reasoning": false,
+              "input": ["text"],
+              "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+              "contextWindow": 131072,
+              "maxTokens": 16384
             }
           ]
         }
