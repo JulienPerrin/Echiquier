@@ -2,6 +2,7 @@ import "gchessboard";
 import type { GChessBoardElement } from "gchessboard";
 import { invoke } from "@tauri-apps/api/core";
 import { writeText as tauriWriteText } from "@tauri-apps/plugin-clipboard-manager";
+import { signal, computed, effect, batch } from "@preact/signals-core";
 
 const board = document.querySelector<GChessBoardElement>("#board");
 const moveAnnouncer = document.querySelector<HTMLParagraphElement>("#move-announcer");
@@ -51,10 +52,11 @@ interface PgnHeaders {
   [key: string]: string | undefined;
 }
 
-let currentGameId = "immortal";
-let moves: string[] = [];
-let gameResult: string | undefined;
-let currentMoveIndex = 0;
+const currentGameId = signal("immortal");
+const headers = signal<PgnHeaders | null>(null);
+const moves = signal<string[]>([]);
+const gameResult = signal<string | undefined>(undefined);
+const currentMoveIndex = signal(0);
 const moveButtons = new Map<number, HTMLButtonElement>();
 
 function syncBoardMotionPreference(): void {
@@ -62,6 +64,46 @@ function syncBoardMotionPreference(): void {
     board.animationDuration = reducedMotionQuery.matches ? 0 : 200;
   }
 }
+
+const gameTitle = computed(() => {
+  const h = headers.value;
+  if (!h) return "The Immortal Game";
+  if (isHeaderDefined(h.Title)) {
+    return h.Title!;
+  }
+
+  const white = isHeaderDefined(h.White) ? h.White!.trim() : "";
+  const black = isHeaderDefined(h.Black) ? h.Black!.trim() : "";
+
+  let players = "";
+  if (white && black) {
+    players = `${white} vs ${black}`;
+  } else if (white) {
+    players = white;
+  } else if (black) {
+    players = black;
+  }
+
+  const site =
+    isHeaderDefined(h.Site) ? h.Site!.trim()
+    : isHeaderDefined(h.Event) ? h.Event!.trim()
+    : "";
+  const parsedDate = isHeaderDefined(h.Date) ? formatPgnDate(h.Date!.trim()) : null;
+  const dateStr = parsedDate ? parsedDate.formatted : isHeaderDefined(h.Date) ? h.Date!.trim() : "";
+
+  const locationAndDate = [site, dateStr].filter(Boolean).join(", ");
+
+  if (players && locationAndDate) {
+    return `${players}, ${locationAndDate}`;
+  }
+  if (players) {
+    return players;
+  }
+  if (locationAndDate) {
+    return locationAndDate;
+  }
+  return "The Immortal Game";
+});
 
 async function fetchGamesList(): Promise<GameInfo[]> {
   if (isTauri) {
@@ -170,7 +212,8 @@ function computeGameTitle(headers: PgnHeaders): string {
   return "The Immortal Game";
 }
 
-function renderHeaders(headers: PgnHeaders): void {
+function renderHeaders(headers: PgnHeaders | null): void {
+  if (!headers) return;
   const resolvedTitle = computeGameTitle(headers);
   document.title = `${resolvedTitle} | Echiquier`;
 
@@ -201,7 +244,7 @@ function renderHeaders(headers: PgnHeaders): void {
         timeEl.textContent = parsedDate.formatted;
         gameTitleEl.appendChild(timeEl);
       } else {
-        gameTitleEl.textContent = resolvedTitle;
+        gameTitleEl.textContent = gameTitle.value;
       }
     }
   }
@@ -353,11 +396,11 @@ function switchShareTab(tab: "fen" | "pgn"): void {
 async function openShareDialog(activeTab: "fen" | "pgn" = "pgn"): Promise<void> {
   if (!shareDialogEl) return;
 
-  const fen = await fetchGameFen(currentMoveIndex, currentGameId);
+  const fen = await fetchGameFen(currentMoveIndex.value, currentGameId.value);
   if (shareFenTextEl) {
     shareFenTextEl.value = fen;
   }
-  const pgn = await fetchGamePgn(currentGameId);
+  const pgn = await fetchGamePgn(currentGameId.value);
   if (sharePgnTextEl) {
     sharePgnTextEl.value = pgn;
   }
@@ -370,14 +413,14 @@ async function openShareDialog(activeTab: "fen" | "pgn" = "pgn"): Promise<void> 
 }
 
 function updateActiveSelection(): void {
-  const isStart = currentMoveIndex === 0;
+  const isStart = currentMoveIndex.value === 0;
   if (startPosBtn) {
     startPosBtn.classList.toggle("active", isStart);
     startPosBtn.setAttribute("aria-pressed", String(isStart));
   }
 
   for (const [idx, btn] of moveButtons.entries()) {
-    const isActive = idx === currentMoveIndex;
+    const isActive = idx === currentMoveIndex.value;
     btn.classList.toggle("active", isActive);
     btn.setAttribute("aria-pressed", String(isActive));
     if (isActive) {
@@ -389,10 +432,10 @@ function updateActiveSelection(): void {
   }
 
   if (prevMoveBtn) {
-    prevMoveBtn.setAttribute("aria-disabled", String(currentMoveIndex <= 0));
+    prevMoveBtn.setAttribute("aria-disabled", String(currentMoveIndex.value <= 0));
   }
   if (nextMoveBtn) {
-    nextMoveBtn.setAttribute("aria-disabled", String(currentMoveIndex >= moves.length));
+    nextMoveBtn.setAttribute("aria-disabled", String(currentMoveIndex.value >= moves.value.length));
   }
 }
 
@@ -400,19 +443,19 @@ function describeMove(moveIndex: number): string {
   if (moveIndex === 0) {
     return "Initial position";
   }
-  const moveStr = moves[moveIndex - 1] ?? "";
+  const moveStr = moves.value[moveIndex - 1] ?? "";
   const turn = Math.floor((moveIndex - 1) / 2) + 1;
   const side = (moveIndex - 1) % 2 === 0 ? "White" : "Black";
   return `Move ${turn} ${side}: ${moveStr}`;
 }
 
 async function selectMove(moveIndex: number): Promise<void> {
-  if (moveIndex < 0 || moveIndex > moves.length) {
+  if (moveIndex < 0 || moveIndex > moves.value.length) {
     return;
   }
-  currentMoveIndex = moveIndex;
+  currentMoveIndex.value = moveIndex;
   updateActiveSelection();
-  const fen = await fetchGameFen(currentMoveIndex, currentGameId);
+  const fen = await fetchGameFen(currentMoveIndex.value, currentGameId.value);
   if (board) {
     board.fen = fen;
   }
@@ -420,7 +463,7 @@ async function selectMove(moveIndex: number): Promise<void> {
     shareFenTextEl.value = fen;
   }
   if (moveAnnouncer) {
-    moveAnnouncer.textContent = `${describeMove(currentMoveIndex)}`;
+    moveAnnouncer.textContent = `${describeMove(currentMoveIndex.value)}`;
   }
 }
 
@@ -447,7 +490,7 @@ function renderMovesList(): void {
   movesListEl.innerHTML = "";
   moveButtons.clear();
 
-  for (let i = 0; i < moves.length; i += 2) {
+  for (let i = 0; i < moves.value.length; i += 2) {
     const turn = Math.floor(i / 2) + 1;
     const row = document.createElement("li");
     row.className = "move-row";
@@ -458,11 +501,11 @@ function renderMovesList(): void {
     turnSpan.textContent = `${turn}.`;
     row.appendChild(turnSpan);
 
-    const whiteBtn = createMoveButton(i + 1, turn, "White", moves[i]);
+    const whiteBtn = createMoveButton(i + 1, turn, "White", moves.value[i]);
     row.appendChild(whiteBtn);
 
-    if (i + 1 < moves.length) {
-      const blackBtn = createMoveButton(i + 2, turn, "Black", moves[i + 1]);
+    if (i + 1 < moves.value.length) {
+      const blackBtn = createMoveButton(i + 2, turn, "Black", moves.value[i + 1]);
       row.appendChild(blackBtn);
     }
 
@@ -483,7 +526,7 @@ function renderGameResult(result?: string): void {
 }
 
 async function loadGame(gameId: string): Promise<void> {
-  currentGameId = gameId;
+  currentGameId.value = gameId;
   if (gameSelectEl && gameSelectEl.value !== gameId) {
     gameSelectEl.value = gameId;
   }
@@ -500,11 +543,12 @@ async function loadGame(gameId: string): Promise<void> {
     fetchGameMoves(gameId),
   ]);
 
-  renderHeaders(fetchedHeaders);
-  moves = fetchedMoves;
-  gameResult = fetchedHeaders.Result;
-  renderMovesList();
-  renderGameResult(gameResult);
+  batch(() => {
+    headers.value = fetchedHeaders;
+    moves.value = fetchedMoves;
+    gameResult.value = fetchedHeaders.Result;
+  });
+
   await selectMove(0);
 }
 
@@ -551,12 +595,12 @@ async function initApp(): Promise<void> {
 
   prevMoveBtn?.addEventListener("click", () => {
     if (prevMoveBtn.getAttribute("aria-disabled") === "true") return;
-    void selectMove(currentMoveIndex - 1);
+    void selectMove(currentMoveIndex.value - 1);
   });
 
   nextMoveBtn?.addEventListener("click", () => {
     if (nextMoveBtn.getAttribute("aria-disabled") === "true") return;
-    void selectMove(currentMoveIndex + 1);
+    void selectMove(currentMoveIndex.value + 1);
   });
 
   shareBtn?.addEventListener("click", () => {
@@ -590,7 +634,7 @@ async function initApp(): Promise<void> {
     if (!sharePgnTextEl) return;
     if (isTauri) {
       try {
-        const savedPath = await invoke<string>("download_pgn", { game: currentGameId });
+        const savedPath = await invoke<string>("download_pgn", { game: currentGameId.value });
         showToast(`✓ Saved to ${savedPath}`);
       } catch (err) {
         showToast(`✕ Failed to save PGN: ${String(err)}`);
@@ -601,10 +645,10 @@ async function initApp(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${currentGameId}.pgn`;
+    a.download = `${currentGameId.value}.pgn`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast(`✓ Downloaded ${currentGameId}.pgn`);
+    showToast(`✓ Downloaded ${currentGameId.value}.pgn`);
   });
 
   shareDialogEl?.addEventListener("click", (event) => {
@@ -625,21 +669,33 @@ async function initApp(): Promise<void> {
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      void selectMove(currentMoveIndex - 1);
+      void selectMove(currentMoveIndex.value - 1);
     } else if (event.key === "ArrowRight") {
       event.preventDefault();
-      void selectMove(currentMoveIndex + 1);
+      void selectMove(currentMoveIndex.value + 1);
     }
   });
 
   window.addEventListener("popstate", () => {
     const game = new URLSearchParams(window.location.search).get("game") || "immortal";
-    if (game !== currentGameId) {
+    if (game !== currentGameId.value) {
       void loadGame(game);
     }
   });
 
   await loadGame(initialGame);
 }
+
+effect(() => {
+  renderHeaders(headers.value);
+});
+
+effect(() => {
+  renderMovesList();
+});
+
+effect(() => {
+  renderGameResult(gameResult.value);
+});
 
 void initApp();
