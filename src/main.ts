@@ -59,7 +59,7 @@ const gameResult = signal<string | undefined>(undefined);
 const currentMoveIndex = signal(0);
 const moveButtons = new Map<number, HTMLButtonElement>();
 
-function syncBoardMotionPreference(): void {
+export function syncBoardMotionPreference(): void {
   if (board) {
     board.animationDuration = reducedMotionQuery.matches ? 0 : 200;
   }
@@ -121,14 +121,14 @@ async function fetchGameHeaders(gameId: string = "immortal"): Promise<PgnHeaders
   return (await response.json()) as PgnHeaders;
 }
 
-function isHeaderDefined(val: string | undefined): boolean {
+export function isHeaderDefined(val: string | undefined): boolean {
   if (typeof val !== "string") return false;
   const trimmed = val.trim();
   if (trimmed === "" || trimmed === "*") return false;
   return !/^[\s.?/—–-]*$/.test(trimmed);
 }
 
-function formatPgnDate(dateStr: string): { datetime: string; formatted: string } | null {
+export function formatPgnDate(dateStr: string): { datetime: string; formatted: string } | null {
   const parts = dateStr.split(/[./-]/);
   if (parts.length === 0) return null;
 
@@ -174,7 +174,7 @@ function formatPgnDate(dateStr: string): { datetime: string; formatted: string }
   return { datetime: String(year), formatted: String(year) };
 }
 
-function computeGameTitle(headers: PgnHeaders): string {
+export function computeGameTitle(headers: PgnHeaders): string {
   if (isHeaderDefined(headers.Title)) {
     return headers.Title!;
   }
