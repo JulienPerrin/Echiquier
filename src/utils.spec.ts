@@ -46,4 +46,28 @@ describe('Utility Functions', () => {
     expect(result).toContain('Site')
     expect(result).toContain('2023')
   })
+
+  it('isHeaderDefined handles undefined and punctuation-only values', () => {
+    expect(isHeaderDefined(undefined)).toBe(false)
+    expect(isHeaderDefined('   ')).toBe(false)
+    expect(isHeaderDefined('---')).toBe(false)
+  })
+
+  it('formatPgnDate handles year-month, year-only, and invalid year', () => {
+    const ym = formatPgnDate('2023.05.??')
+    expect(ym?.datetime).toBe('2023-05')
+    expect(ym?.formatted).toContain('2023')
+
+    const y = formatPgnDate('1851.??.??')
+    expect(y).toEqual({ datetime: '1851', formatted: '1851' })
+
+    expect(formatPgnDate('0000.01.01')).toBeNull()
+  })
+
+  it('computeGameTitle handles partial headers and fallback', () => {
+    expect(computeGameTitle({ White: 'Morphy' })).toBe('Morphy')
+    expect(computeGameTitle({ Black: 'Anderssen' })).toBe('Anderssen')
+    expect(computeGameTitle({ Event: 'London', Date: 'circa 1851' })).toBe('London, circa 1851')
+    expect(computeGameTitle({})).toBe('The Immortal Game')
+  })
 })
