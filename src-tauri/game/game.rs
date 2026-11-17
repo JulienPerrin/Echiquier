@@ -2,7 +2,6 @@ use std::fmt::{self, Display};
 
 use crate::echiquier::case::Case;
 use crate::echiquier::echiquier::Echiquier;
-#[cfg(test)]
 use crate::echiquier::piece_move::PieceMove;
 use crate::echiquier::position::Position;
 use crate::game::position_change::PositionChange;
@@ -12,9 +11,7 @@ use crate::pieces::king::King;
 use crate::pieces::knight::Knight;
 #[cfg(test)]
 use crate::pieces::movable::Movable;
-use crate::pieces::pawn::Pawn;
-#[cfg(test)]
-use crate::pieces::pawn::PromotionPiece;
+use crate::pieces::pawn::{Pawn, PromotionPiece};
 use crate::pieces::piece::Piece;
 use crate::pieces::queen::Queen;
 use crate::pieces::rook::Rook;
@@ -481,6 +478,96 @@ impl<'a> Game<'a> {
 
     fn current_position(&self) -> &Position<'a> {
         self.positions.last().unwrap_or(&self.initial_position)
+    }
+
+    pub fn new_standard() -> Game<'static> {
+        Game {
+            initial_position: INITIAL_POSITION,
+            positions: vec![INITIAL_POSITION],
+            title: None,
+            event: None,
+            site: None,
+            date: None,
+            round: None,
+            white: None,
+            black: None,
+            headers: Vec::new(),
+            result: None,
+        }
+    }
+
+    pub fn current_fen(&self) -> String {
+        self.current_position().get_fen()
+    }
+
+    pub fn is_white_turn(&self) -> bool {
+        self.current_position().is_white_turn()
+    }
+
+    pub fn allowed_moves_map(&self) -> std::collections::BTreeMap<String, Vec<String>> {
+        let pos = self.current_position();
+        let is_white = pos.is_white_turn();
+        let mut map = std::collections::BTreeMap::new();
+        for piece in pos.get_pieces::<Piece>(is_white) {
+            let targets: Vec<String> = piece
+                .allowed_moves(pos)
+                .into_iter()
+                .filter_map(|m| {
+                    pos.echiquier
+                        .get_relative_case(&piece.case, m)
+                        .map(|c| c.algebraic())
+                })
+                .collect();
+            if !targets.is_empty() {
+                map.insert(piece.case.algebraic(), targets);
+            }
+        }
+        map
+    }
+
+    pub fn play_coordinate_move(&mut self, coord: &str) -> std::result::Result<(), String> {
+        if coord.len() < 4 || coord.len() > 5 {
+            return Err(format!("Invalid coordinate move: {coord}"));
+        }
+        let from = Case::from_algebraic(&coord[0..2])
+            .ok_or_else(|| format!("Invalid source square in {coord}"))?;
+        let to = Case::from_algebraic(&coord[2..4])
+            .ok_or_else(|| format!("Invalid target square in {coord}"))?;
+        let current = *self.current_position();
+        let mut piece = current
+            .get_piece(&from)
+            .ok_or_else(|| format!("No piece at {}", &coord[0..2]))?;
+        if piece.is_white != current.is_white_turn() {
+            return Err(format!("Wrong side to move for {}", &coord[0..2]));
+        }
+        let piece_move = PieceMove {
+            right: to.file as i8 - from.file as i8,
+            up: to.rank as i8 - from.rank as i8,
+        };
+        if !piece.allowed_moves(&current).contains(&piece_move) {
+            return Err(format!("Illegal move: {coord}"));
+        }
+        let piece_taken = current.get_piece(&to).or_else(|| {
+            piece
+                .allowed_captures(&current)
+                .into_iter()
+                .find(|&(m, _)| m == piece_move)
+                .map(|(_, taken)| taken)
+        });
+        let promotion = if matches!(piece, Piece::Pawn(_)) && (to.rank == 7 || to.rank == 0) {
+            Some(match coord.as_bytes().get(4).copied() {
+                Some(b'r') => PromotionPiece::Rook,
+                Some(b'b') => PromotionPiece::Bishop,
+                Some(b'n') => PromotionPiece::Knight,
+                _ => PromotionPiece::Queen,
+            })
+        } else {
+            None
+        };
+        let next_pos = piece.move_piece(&current, piece_move, to, piece_taken, promotion);
+        self.positions.push(next_pos);
+        self.result = self.board_result();
+        Ok(())
     }
 
     #[cfg(test)]

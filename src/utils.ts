@@ -51,7 +51,10 @@ export function formatPgnDate(dateStr: string): { datetime: string; formatted: s
   return { datetime: String(year), formatted: String(year) };
 }
 
-export function computeGameTitle(headers: { [key: string]: string | undefined }): string {
+export function computeGameTitle(
+  headers: { [key: string]: string | undefined },
+  fallbackTitle: string = "The Immortal Game"
+): string {
   if (isHeaderDefined(headers.Title)) {
     return headers.Title!;
   }
@@ -80,5 +83,5 @@ export function computeGameTitle(headers: { [key: string]: string | undefined })
   if (players && locationAndDate) return `${players}, ${locationAndDate}`;
   if (players) return players;
   if (locationAndDate) return locationAndDate;
-  return "The Immortal Game";
+  return fallbackTitle;
 }

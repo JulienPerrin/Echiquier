@@ -5,6 +5,12 @@ vi.mock('gchessboard', () => ({}))
 function buildAppDom(): void {
   document.body.innerHTML = `
     <select id="game-select"><option value="immortal">Immortal</option></select>
+    <form id="add-game-form">
+      <input id="add-header-title" name="title" type="text" />
+      <select id="add-header-result" name="result"><option value="*">*</option></select>
+    </form>
+    <g-chess-board id="add-game-board"></g-chess-board>
+    <ol id="add-moves-list"></ol>
     <button id="share-btn"></button>
     <dialog id="share-dialog">
       <button id="close-share-dialog-btn"></button>
@@ -185,6 +191,13 @@ describe('main.ts and app.ts', () => {
     await vi.waitFor(() => expect(state.currentGameId.value).toBe('evergreen'))
     window.dispatchEvent(new PopStateEvent('popstate'))
     expect(state.currentGameId.value).toBe('evergreen')
+
+    // Saving a game in Add Game adds it to #game-select
+    const addBoard = document.getElementById('add-game-board') as any
+    addBoard.dispatchEvent(new CustomEvent('movefinished', { detail: { from: 'e2', to: 'e4' } }))
+    ;(document.getElementById('add-header-title') as HTMLInputElement).value = 'Saved App Game'
+    document.getElementById('add-game-form')!.dispatchEvent(new Event('submit', { cancelable: true }))
+    expect(Array.from(gameSelectEl.options).some((o) => o.textContent === 'Saved App Game')).toBe(true)
 
     createUrlSpy.mockRestore()
     revokeUrlSpy.mockRestore()

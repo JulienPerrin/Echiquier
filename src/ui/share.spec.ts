@@ -107,8 +107,10 @@ describe('ui/share.ts', () => {
     expect(await shareTauri.copyToClipboard('pgn-data', 'PGN')).toBe(true)
     expect(tauriWriteTextMock).toHaveBeenCalledWith('pgn-data')
 
+    ;(document.getElementById('share-pgn-text') as HTMLTextAreaElement).value = 'pgn-data'
     invokeMock.mockResolvedValueOnce('/tmp/immortal.pgn')
     await shareTauri.downloadPgn()
+    expect(invokeMock).toHaveBeenCalledWith('download_pgn', { game: 'immortal', pgn: 'pgn-data' })
     expect(document.getElementById('toast-message')?.textContent).toBe('✓ Saved to /tmp/immortal.pgn')
 
     invokeMock.mockRejectedValueOnce(new Error('disk full'))

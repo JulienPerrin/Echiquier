@@ -5,9 +5,12 @@ import { defineConfig } from "vite";
 
 const BIN_PATH = "./target/debug/chessboard";
 
+let binaryBuilt = false;
+
 function ensureBinary(): void {
-  if (!fs.existsSync(BIN_PATH)) {
+  if (!binaryBuilt || !fs.existsSync(BIN_PATH)) {
     execSync("cargo build -q");
+    binaryBuilt = true;
   }
 }
 
@@ -235,6 +238,35 @@ function rustApiBridge(): Plugin {
           res.statusCode = 500;
           res.end(String(err));
         }
+      });
+
+      server.middlewares.use("/api/position_state", (req, res) => {
+        try {
+          const url = new URL(req.url ?? "", "http://localhost");
+          const moves = url.searchParams.get("moves") ?? "";
+          const output = runChessboard(["position-state", moves]).trim();
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(output);
+        } catch (err) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: String(err) }));
+        }
+      });
+
+      server.middlewares.use("/api/import_pgn", (req, res) => {
+        const chunks: Buffer[] = [];
+        req.on("data", (chunk: Buffer) => chunks.push(chunk));
+        req.on("end", () => {
+          try {
+            const pgn = Buffer.concat(chunks).toString("utf-8");
+            const output = runChessboard(["import-pgn", pgn]).trim();
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(output);
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(err) }));
+          }
+        });
       });
     },
   };

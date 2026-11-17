@@ -13,6 +13,16 @@ pub fn handle_cli_command(cmd: &str, arg1: Option<&str>, arg2: Option<&str>) -> 
         "moves" => Some(game_moves(arg1).join("\n")),
         "headers" => Some(game_headers_json(arg1)),
         "pgn" => Some(game_pgn(arg1)),
+        "position-state" => {
+            let moves: Vec<String> = arg1
+                .unwrap_or("")
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            position_state_json(&moves).ok()
+        }
+        "import-pgn" => import_pgn_json(arg1?).ok(),
         _ => None,
     }
 }
@@ -109,6 +119,23 @@ mod tests {
         );
         assert_eq!(None, handle_cli_command("unknown", None, None));
         run_with_args(Some("moves"), None, None);
+    }
+
+    #[test]
+    fn test_cli_position_state() {
+        let out = handle_cli_command("position-state", Some("e2e4"), None).unwrap();
+        assert!(out.contains("\"turn\":\"black\""));
+        assert!(handle_cli_command("position-state", None, None)
+            .unwrap()
+            .contains("\"turn\":\"white\""));
+        assert!(handle_cli_command("position-state", Some("bad"), None).is_none());
+    }
+
+    #[test]
+    fn test_cli_import_pgn() {
+        let out = handle_cli_command("import-pgn", Some("1. e4 e5"), None).unwrap();
+        assert!(out.contains("\"coord_moves\":[\"e2e4\",\"e7e5\"]"));
+        assert!(handle_cli_command("import-pgn", None, None).is_none());
     }
 
     #[test]

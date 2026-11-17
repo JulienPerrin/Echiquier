@@ -8,7 +8,13 @@
   </head>
   <body>
     <a href="#moves-heading" class="skip-link visually-hidden">Skip to move history</a>
-    <main class="layout">
+    <div class="app-shell">
+      <div id="app-tablist" class="app-tablist" role="tablist" aria-label="Application views">
+        <button id="app-tab-view" type="button" class="app-tab" role="tab" aria-selected="true" tabindex="0">View Games</button>
+        <button id="app-tab-add" type="button" class="app-tab" role="tab" aria-selected="false" tabindex="-1">Add Game</button>
+      </div>
+      <div id="panel-view-game" role="tabpanel" aria-labelledby="app-tab-view">
+        <main class="layout">
       <div class="board-section">
         <header class="board-header">
           <div class="game-selector-bar">
@@ -61,6 +67,85 @@
         </div>
       </aside>
     </main>
+      </div>
+      <div id="panel-add-game" role="tabpanel" aria-labelledby="app-tab-add" hidden>
+        <form id="add-game-form" class="layout" aria-labelledby="add-game-heading">
+          <h2 id="add-game-heading" class="visually-hidden">Add Past Game</h2>
+          <div class="board-section">
+            <header class="board-header">
+              <div class="editable-title-row">
+                <label for="add-header-title" class="visually-hidden">Title</label>
+                <input id="add-header-title" name="title" type="text" class="editable-title" placeholder="Game Title" />
+              </div>
+              <div class="players editable-players">
+                <label for="add-header-white" class="visually-hidden">White</label>
+                <input id="add-header-white" name="white" type="text" class="editable-player" placeholder="White" />
+                <span aria-hidden="true">vs</span>
+                <label for="add-header-black" class="visually-hidden">Black</label>
+                <input id="add-header-black" name="black" type="text" class="editable-player" placeholder="Black" />
+              </div>
+              <div class="game-headers editable-headers">
+                <div class="header-item">
+                  <label for="add-header-event">Event</label>
+                  <input id="add-header-event" name="event" type="text" class="editable-tag" placeholder="Event" />
+                </div>
+                <div class="header-item">
+                  <label for="add-header-site">Site</label>
+                  <input id="add-header-site" name="site" type="text" class="editable-tag" placeholder="Site" />
+                </div>
+                <div class="header-item">
+                  <label for="add-header-date">Date</label>
+                  <input id="add-header-date" name="date" type="date" class="editable-tag editable-tag-date" />
+                </div>
+                <div class="header-item">
+                  <label for="add-header-round">Round</label>
+                  <input id="add-header-round" name="round" type="text" class="editable-tag editable-tag-short" />
+                </div>
+                <div class="header-item">
+                  <label for="add-header-result">Result</label>
+                  <select id="add-header-result" name="result" class="editable-result">
+                    <option value="*">*</option>
+                    <option value="1-0">1-0</option>
+                    <option value="0-1">0-1</option>
+                    <option value="1/2-1/2">1/2-1/2</option>
+                  </select>
+                </div>
+              </div>
+            </header>
+            <div class="board-container" role="group" aria-label="Chessboard startup position">
+              <g-chess-board id="add-game-board" coordinates="outside" interactive></g-chess-board>
+            </div>
+          </div>
+          <aside class="history-panel" aria-labelledby="add-moves-heading">
+            <div class="history-header">
+              <h2 id="add-moves-heading" tabindex="-1">Moves</h2>
+              <div class="nav-controls" role="group" aria-label="Move controls">
+                <button id="add-undo-btn" type="button" class="nav-btn" aria-label="Undo last move" disabled>
+                  <span aria-hidden="true">&#8592;</span>
+                </button>
+              </div>
+            </div>
+            <div class="moves-scroll-container">
+              <div id="add-import-pgn-box" class="import-pgn-box" hidden>
+                <label for="add-import-pgn-file" class="share-label">Upload .pgn file:</label>
+                <input id="add-import-pgn-file" type="file" accept=".pgn,text/plain" class="import-pgn-file" />
+                <label for="add-import-pgn-text" class="share-label">Or paste PGN:</label>
+                <textarea id="add-import-pgn-text" class="share-textarea" rows="5" spellcheck="false"></textarea>
+                <div class="import-pgn-actions">
+                  <button id="add-import-pgn-submit" type="button" class="share-action-btn">Load PGN</button>
+                  <button id="add-import-pgn-cancel" type="button" class="share-action-btn secondary">Cancel</button>
+                </div>
+              </div>
+              <ol id="add-moves-list" class="moves-list" role="list" aria-labelledby="add-moves-heading"></ol>
+              <div class="moves-footer">
+                <button id="add-import-pgn-btn" type="button" class="share-btn">Import PGN</button>
+                <button id="add-save-game-btn" type="submit" class="share-btn" hidden>Save Game</button>
+              </div>
+            </div>
+          </aside>
+        </form>
+      </div>
+    </div>
 
     <dialog id="share-dialog" class="share-dialog" aria-labelledby="share-dialog-title">
       <div class="share-dialog-header">

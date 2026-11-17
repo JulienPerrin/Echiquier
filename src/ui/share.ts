@@ -74,7 +74,10 @@ export async function downloadPgn(): Promise<void> {
   if (!sharePgnTextEl) return;
   if (isTauri) {
     try {
-      const savedPath = await invoke<string>("download_pgn", { game: currentGameId.value });
+      const savedPath = await invoke<string>("download_pgn", {
+        game: currentGameId.value,
+        pgn: sharePgnTextEl.value,
+      });
       showToast(`✓ Saved to ${savedPath}`);
     } catch (err) {
       showToast(`✕ Failed to save PGN: ${String(err)}`);

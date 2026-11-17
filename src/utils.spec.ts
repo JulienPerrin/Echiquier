@@ -69,5 +69,6 @@ describe('Utility Functions', () => {
     expect(computeGameTitle({ Black: 'Anderssen' })).toBe('Anderssen')
     expect(computeGameTitle({ Event: 'London', Date: 'circa 1851' })).toBe('London, circa 1851')
     expect(computeGameTitle({})).toBe('The Immortal Game')
+    expect(computeGameTitle({}, 'Game saved 2026-11-17')).toBe('Game saved 2026-11-17')
   })
 })

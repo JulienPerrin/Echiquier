@@ -38,6 +38,16 @@ pub fn game_pgn(game: Option<String>) -> String {
     crate::game_pgn(game.as_deref())
 }
 
+#[tauri::command]
+pub fn position_state(moves: Vec<String>) -> Result<crate::PositionState, String> {
+    crate::position_state(&moves)
+}
+
+#[tauri::command]
+pub fn import_pgn(pgn: String) -> Result<crate::ImportedPgn, String> {
+    crate::import_pgn(&pgn)
+}
+
 pub fn pgn_file_name(game: Option<&str>) -> String {
     format!("{}.pgn", game.unwrap_or("immortal"))
 }
@@ -51,17 +61,33 @@ pub fn pgn_download_path(base_dir: Option<PathBuf>, game: Option<&str>) -> PathB
     dir.join(pgn_file_name(game))
 }
 
+pub fn save_pgn_content(
+    path: &Path,
+    game: Option<&str>,
+    pgn: Option<&str>,
+) -> std::io::Result<()> {
+    match pgn {
+        Some(content) => std::fs::write(path, content),
+        None => std::fs::write(path, crate::game_pgn(game)),
+    }
+}
+
+#[cfg(test)]
 pub fn save_pgn(path: &Path, game: Option<&str>) -> std::io::Result<()> {
-    std::fs::write(path, crate::game_pgn(game))
+    save_pgn_content(path, game, None)
 }
 
 #[tauri::command]
 #[cfg(not(tarpaulin_include))]
-pub fn download_pgn(app: tauri::AppHandle, game: Option<String>) -> Result<String, String> {
+pub fn download_pgn(
+    app: tauri::AppHandle,
+    game: Option<String>,
+    pgn: Option<String>,
+) -> Result<String, String> {
     use tauri::Manager;
     let base = app.path().download_dir().ok();
     let target = pgn_download_path(base, game.as_deref());
-    save_pgn(&target, game.as_deref())
+    save_pgn_content(&target, game.as_deref(), pgn.as_deref())
         .map(|()| target.to_string_lossy().into_owned())
         .map_err(|e| e.to_string())
 }
@@ -121,6 +147,13 @@ mod tests {
     }
 
     #[test]
+    fn test_position_state_command() {
+        let state = position_state(vec![String::from("e2e4")]).unwrap();
+        assert_eq!("black", state.turn);
+        assert_eq!(vec![String::from("e4")], state.san_moves);
+    }
+
+    #[test]
     fn test_pgn_file_name() {
         assert_eq!("immortal.pgn", pgn_file_name(None));
         assert_eq!("evergreen.pgn", pgn_file_name(Some("evergreen")));
@@ -137,6 +170,14 @@ mod tests {
         std::fs::remove_file(&path).unwrap();
 
         assert!(save_pgn(&std::env::temp_dir(), None).is_err());
+
+        let custom_path = std::env::temp_dir().join("echiquier_test_custom_pgn.pgn");
+        save_pgn_content(&custom_path, None, Some("[Title \"Custom\"]\n\n1. e4 1-0")).unwrap();
+        assert_eq!(
+            "[Title \"Custom\"]\n\n1. e4 1-0",
+            std::fs::read_to_string(&custom_path).unwrap()
+        );
+        std::fs::remove_file(&custom_path).unwrap();
     }
 
     #[test]

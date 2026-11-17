@@ -7,6 +7,9 @@ import { openShareDialog, switchShareTab, copyToClipboard, downloadPgn } from ".
 import { renderHeaders } from "./ui/headers";
 import { renderGameResult } from "./ui/result";
 import { renderMovesList, selectMove } from "./ui/moves";
+import { initAppTabs } from "./ui/tabs";
+import { initAddGame } from "./ui/add-game";
+import { computeGameTitle } from "./utils";
 import { fetchGamesList, fetchGameHeaders, fetchGameMoves } from "./api";
 
 const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -51,7 +54,7 @@ async function loadGame(gameId: string): Promise<void> {
 }
 
 async function ensureGameSelectOptions(): Promise<void> {
-  if (!gameSelectEl || gameSelectEl.options.length > 1) {
+  if (!gameSelectEl) {
     return;
   }
   try {
@@ -69,6 +72,14 @@ async function ensureGameSelectOptions(): Promise<void> {
 }
 
 export async function initApp(): Promise<void> {
+  initAppTabs();
+  void initAddGame((saved) => {
+    if (!gameSelectEl) return;
+    const opt = document.createElement("option");
+    opt.value = saved.id;
+    opt.textContent = computeGameTitle(saved.headers);
+    gameSelectEl.appendChild(opt);
+  });
   syncBoardMotionPreference();
   reducedMotionQuery.addEventListener("change", syncBoardMotionPreference);
 
